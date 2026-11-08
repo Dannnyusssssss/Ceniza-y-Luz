@@ -4,6 +4,8 @@ import { DEFAULT_BACKEND, readBackendPreference } from './engine/backendPreferen
 import { GameSession } from './engine/session';
 import { readGameMode } from './engine/gameMode';
 import { SaveSlot } from './engine/saveSlot';
+import { limitFrameRate } from './engine/frameRate';
+import { FrameLimiter, frameTarget } from './core/frameLimiter';
 import { FixedStepLoop } from './core/loop';
 import { BrowserInput, type InputCallbacks } from './core/input';
 import { SafeStorage } from './core/storage';
@@ -11,6 +13,7 @@ import { SettingsStore } from './core/settingsStore';
 import { App } from './ui/app';
 import { Hud } from './ui/hud';
 import { DebugOverlay } from './ui/debug';
+import { FPS_LIMIT_TARGET, IDLE_FPS_TARGET } from './data/settings';
 import { TEXTS } from './data/texts';
 import { META } from './data/meta';
 
@@ -86,7 +89,7 @@ async function start(): Promise<void> {
     showFatal(TEXTS.errors.noGraphics);
     return;
   }
-  const { engine, backend } = created;
+  const { engine, backend, gpu } = created;
   canvas.dataset['backend'] = backend;
   engine.onContextLostObservable.add(() => showFatal(TEXTS.errors.contextLost));
   engine.onContextRestoredObservable.add(() => hideFatal());
@@ -104,12 +107,15 @@ async function start(): Promise<void> {
   const mode = readGameMode(window.location.search);
   const session = await GameSession.create(engine, input, settings, 'alba', mode, showLoading);
   hideLoading();
+  const limiter = new FrameLimiter();
   const debug = new DebugOverlay(
     byId('debug'),
     engine,
     session.world.scene,
     backend,
     () => TEXTS.settings.qualityOptions[settings.value.quality],
+    gpu,
+    () => limiter.refreshHz,
   );
   const app = new App(
     canvas,
@@ -127,6 +133,9 @@ async function start(): Promise<void> {
   if (import.meta.env.DEV) Object.assign(window, { game: { session, app } });
   app.start();
 
+  limitFrameRate(engine, limiter, () =>
+    frameTarget(FPS_LIMIT_TARGET[settings.value.fpsLimit], session.playing, IDLE_FPS_TARGET),
+  );
   const loop = new FixedStepLoop();
   engine.runRenderLoop(() => {
     const frameSeconds = engine.getDeltaTime() / 1000;

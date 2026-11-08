@@ -1,6 +1,7 @@
 import {
   DAMAGE_TAKEN_LEVELS,
   FOV_RANGE,
+  FPS_LIMITS,
   QUALITY_LEVELS,
   SENSITIVITY_RANGE,
   SETTINGS_MAX_RAW_LENGTH,
@@ -22,6 +23,7 @@ export function defaultSettings(prefersReducedMotion: boolean): Settings {
     invertY: false,
     fov: FOV_RANGE.default,
     quality: 'medium',
+    fpsLimit: 'auto',
     damageTaken: 'normal',
     textSize: 'normal',
   };
@@ -88,6 +90,7 @@ export function validateSettings(source: unknown, prefersReducedMotion: boolean)
     invertY: readBoolean(data, 'invertY', defaults.invertY),
     fov: readNumber(data, 'fov', FOV_RANGE),
     quality: readChoice(data, 'quality', QUALITY_LEVELS, defaults.quality),
+    fpsLimit: readChoice(data, 'fpsLimit', FPS_LIMITS, defaults.fpsLimit),
     damageTaken: readChoice(data, 'damageTaken', DAMAGE_TAKEN_LEVELS, defaults.damageTaken),
     textSize: readChoice(data, 'textSize', TEXT_SIZES, defaults.textSize),
   };

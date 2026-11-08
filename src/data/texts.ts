@@ -80,6 +80,12 @@ export const TEXTS = {
     fovUnit: '°',
     quality: 'Calidad gráfica',
     qualityOptions: { low: 'Baja', medium: 'Media', high: 'Alta' },
+    fpsLimit: 'Límite de FPS',
+    fpsLimitOptions: {
+      auto: 'Automático (recomendado)',
+      saver: 'Ahorro (menos consumo)',
+      off: 'Sin límite (hasta el máximo de la pantalla)',
+    },
     textSize: 'Tamaño del texto',
     textSizeOptions: { normal: 'Normal', large: 'Grande', xlarge: 'Muy grande' },
     damageTaken: 'Daño recibido',
@@ -245,6 +251,10 @@ export const TEXTS = {
     meshes: 'Mallas activas',
     backend: 'Motor',
     quality: 'Calidad',
+    gpu: 'Gráfica',
+    resolution: 'Resolución interna',
+    refresh: 'Refresco de pantalla (Hz)',
+    unknown: 'desconocida',
   },
 } as const;
 

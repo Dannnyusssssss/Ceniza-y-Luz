@@ -2,6 +2,7 @@ import type { SettingsStore } from '../core/settingsStore';
 import {
   DAMAGE_TAKEN_LEVELS,
   FOV_RANGE,
+  FPS_LIMITS,
   QUALITY_LEVELS,
   SENSITIVITY_RANGE,
   TEXT_SIZES,
@@ -72,7 +73,7 @@ export function createSettingsPanel(
   };
 
   const select = <T extends string>(
-    key: 'quality' | 'textSize' | 'damageTaken',
+    key: 'quality' | 'fpsLimit' | 'textSize' | 'damageTaken',
     label: string,
     values: readonly T[],
     names: Readonly<Record<T, string>>,
@@ -123,6 +124,7 @@ export function createSettingsPanel(
     checkbox('invertY', t.invertY),
     range('fov', t.fov, FOV_RANGE, (v) => `${v}${t.fovUnit}`),
     select('quality', t.quality, QUALITY_LEVELS, t.qualityOptions),
+    select('fpsLimit', t.fpsLimit, FPS_LIMITS, t.fpsLimitOptions),
     select('textSize', t.textSize, TEXT_SIZES, t.textSizeOptions),
     select('damageTaken', t.damageTaken, DAMAGE_TAKEN_LEVELS, t.damageTakenOptions),
     clearArea,

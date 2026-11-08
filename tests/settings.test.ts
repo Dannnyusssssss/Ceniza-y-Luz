@@ -48,6 +48,25 @@ describe('defaultSettings', () => {
     expect(s.quality).toBe('medium');
     expect(s.muted).toBe(false);
     expect(s.version).toBe(SETTINGS_VERSION);
+    expect(s.fpsLimit).toBe('auto');
+  });
+});
+
+describe('límite de FPS', () => {
+  it('se conserva al guardar y volver a leer', () => {
+    const custom = { ...defaultSettings(false), fpsLimit: 'saver' as const };
+    expect(parseSettings(serializeSettings(custom), false).fpsLimit).toBe('saver');
+  });
+
+  it('un valor inválido vuelve a Automático', () => {
+    for (const fpsLimit of ['ultra', 60, null, true, {}]) {
+      expect(parseSettings(JSON.stringify({ fpsLimit }), false).fpsLimit).toBe('auto');
+    }
+  });
+
+  it('los ajustes guardados antes de existir la opción usan Automático y conservan lo demás', () => {
+    const s = parseSettings(JSON.stringify({ version: 1, quality: 'high', muted: true }), false);
+    expect(s).toMatchObject({ fpsLimit: 'auto', quality: 'high', muted: true });
   });
 });
 

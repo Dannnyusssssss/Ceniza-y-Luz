@@ -5,6 +5,14 @@ export const SETTINGS_VERSION = 1;
 export const QUALITY_LEVELS = ['low', 'medium', 'high'] as const;
 export type QualityLevel = (typeof QUALITY_LEVELS)[number];
 
+export const FPS_LIMITS = ['auto', 'saver', 'off'] as const;
+export type FpsLimit = (typeof FPS_LIMITS)[number];
+
+/** Imágenes por segundo que busca cada límite durante la partida (null: todas las que permita la pantalla). */
+export const FPS_LIMIT_TARGET: Readonly<Record<FpsLimit, number | null>> = { auto: 60, saver: 30, off: null };
+/** Imágenes por segundo como máximo fuera de la partida (pausa, menús y diálogos). */
+export const IDLE_FPS_TARGET = 30;
+
 export const DAMAGE_TAKEN_LEVELS = ['normal', 'reduced'] as const;
 export type DamageTaken = (typeof DAMAGE_TAKEN_LEVELS)[number];
 
@@ -34,6 +42,7 @@ export interface Settings {
   readonly invertY: boolean;
   readonly fov: number;
   readonly quality: QualityLevel;
+  readonly fpsLimit: FpsLimit;
   readonly damageTaken: DamageTaken;
   readonly textSize: TextSize;
 }

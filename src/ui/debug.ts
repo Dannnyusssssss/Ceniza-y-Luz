@@ -23,6 +23,8 @@ export class DebugOverlay {
     private readonly scene: Scene,
     private readonly backend: string,
     private readonly qualityName: () => string,
+    private readonly gpu: string,
+    private readonly refreshHz: () => number | null,
   ) {
     root.hidden = true;
   }
@@ -53,8 +55,10 @@ export class DebugOverlay {
     if (this.sinceRefresh < 1 / REFRESH_PER_SECOND) return;
     const t = TEXTS.debug;
     const lights = this.scene.lights.filter((l) => l.isEnabled()).length;
+    const hz = this.refreshHz();
     const lines = [
       `${t.fps}: ${this.engine.getFps().toFixed(0)}`,
+      `${t.refresh}: ${hz === null ? '…' : hz.toFixed(0)}`,
       `${t.logic}: ${(this.logicMs / Math.max(1, this.samples)).toFixed(2)}`,
       `${t.render}: ${(this.renderMs / Math.max(1, this.samples)).toFixed(2)}`,
       `${t.drawCalls}: ${this.instrumentation?.drawCallsCounter.current ?? 0}`,
@@ -62,6 +66,8 @@ export class DebugOverlay {
       `${t.meshes}: ${this.scene.getActiveMeshes().length}`,
       `${t.backend}: ${this.backend}`,
       `${t.quality}: ${this.qualityName()}`,
+      `${t.resolution}: ${this.engine.getRenderWidth()}×${this.engine.getRenderHeight()}`,
+      `${t.gpu}: ${this.gpu || t.unknown}`,
     ];
     this.root.textContent = `${t.title}\n${lines.join('\n')}`;
     this.sinceRefresh = 0;

@@ -27,7 +27,8 @@ Oculto por defecto. Se muestra y se oculta con **F3** en cualquier pantalla. Se 
 
 | Línea              | Qué mide                                                                                 |
 | ------------------ | ---------------------------------------------------------------------------------------- |
-| FPS                | Fotogramas por segundo según el motor gráfico.                                           |
+| FPS                | Imágenes dibujadas por segundo, según el motor gráfico.                                  |
+| Refresco (Hz)      | Frecuencia de la pantalla medida por el juego. Sirve para comparar con los FPS.          |
 | Lógica (ms)        | Media por fotograma del tiempo de los pasos fijos de lógica (60 Hz) y de los sistemas.   |
 | Render (ms)        | Media por fotograma del tiempo de CPU de `scene.render()` (no incluye el tiempo de GPU). |
 | Llamadas de dibujo | Llamadas de dibujo del último fotograma, incluidas sombras, contornos y efectos.         |
@@ -35,5 +36,7 @@ Oculto por defecto. Se muestra y se oculta con **F3** en cualquier pantalla. Se 
 | Mallas activas     | Mallas que pasaron el recorte de cámara en el último fotograma.                          |
 | Motor              | `webgpu` o `webgl2`.                                                                     |
 | Calidad            | Nivel de calidad gráfica en uso (Baja, Media o Alta).                                    |
+| Resolución interna | Píxeles que dibuja el motor en cada imagen.                                              |
+| Gráfica            | Gráfica que informa el navegador. Puede ser poco detallada y no se envía a ningún sitio. |
 
 Presupuesto por zona: 4 luces como máximo, un generador de sombras y 150 llamadas de dibujo.

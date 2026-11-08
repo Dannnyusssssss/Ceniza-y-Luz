@@ -1,11 +1,14 @@
 import { Engine } from '@babylonjs/core/Engines/engine';
 import { WebGPUEngine } from '@babylonjs/core/Engines/webgpuEngine';
 import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine';
+import { describeGpu } from '../core/gpuInfo';
 import type { GraphicsBackend } from './backendPreference';
 
 export interface CreatedEngine {
   readonly engine: AbstractEngine;
   readonly backend: GraphicsBackend;
+  /** Gráfica que informa el navegador; vacío si no informa nada. */
+  readonly gpu: string;
 }
 
 /**
@@ -26,7 +29,7 @@ async function tryWebGpu(canvas: HTMLCanvasElement): Promise<CreatedEngine | nul
       twgslOptions: NO_REMOTE_COMPILER,
     });
     await engine.initAsync(NO_REMOTE_COMPILER, NO_REMOTE_COMPILER);
-    return { engine, backend: 'webgpu' };
+    return { engine, backend: 'webgpu', gpu: describeGpu(engine.getInfo()) };
   } catch {
     return null;
   }
@@ -43,7 +46,7 @@ function tryWebGl2(canvas: HTMLCanvasElement): CreatedEngine | null {
       engine.dispose();
       return null;
     }
-    return { engine, backend: 'webgl2' };
+    return { engine, backend: 'webgl2', gpu: describeGpu(engine.getInfo()) };
   } catch {
     return null;
   }
