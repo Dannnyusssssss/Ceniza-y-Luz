@@ -1,5 +1,6 @@
 import type { BlockData } from '../data/arena';
 import type { EnemyKind } from '../data/enemies';
+import type { EnemyGroup } from '../data/zones';
 import type { DamageTaken } from '../data/settings';
 import { createRng, type Rng } from '../core/rng';
 import { currentStep, inHitWindow, isInArc, type ComboState } from './combat';
@@ -68,6 +69,8 @@ export interface EncounterState {
   readonly rng: Rng;
   /** Ya se avisó de que se puede reintentar. */
   retryAnnounced: boolean;
+  /** Si es false no hay oleadas: los enemigos los coloca la zona. */
+  readonly wavesEnabled: boolean;
 }
 
 /** Lo que el combate necesita saber del jugador en este paso. */
@@ -79,9 +82,11 @@ export interface EncounterInput {
   readonly dodging: boolean;
   readonly damageSetting: DamageTaken;
   readonly blocks: readonly BlockData[];
+  /** Multiplica el daño de los golpes del jugador (temple de la Hoja). */
+  readonly damageFactor?: number;
 }
 
-export function createEncounter(seed = 20261108): EncounterState {
+export function createEncounter(seed = 20261108, wavesEnabled = true): EncounterState {
   return {
     enemies: [],
     projectiles: [],
@@ -92,7 +97,27 @@ export function createEncounter(seed = 20261108): EncounterState {
     nextId: 1,
     rng: createRng(seed),
     retryAnnounced: false,
+    wavesEnabled,
   };
+}
+
+/** Coloca los enemigos de una zona, repartidos en corro alrededor del centro de cada grupo. */
+export function spawnZoneEnemies(state: EncounterState, groups: readonly EnemyGroup[]): void {
+  for (const group of groups) {
+    group.kinds.forEach((kind, i) => {
+      const angle = (i / group.kinds.length) * Math.PI * 2 + group.x;
+      const x = group.x + Math.cos(angle) * group.spread;
+      const z = group.z + Math.sin(angle) * group.spread;
+      state.enemies.push(createEnemy(state.nextId++, kind, x, z, angle, 1, true));
+    });
+  }
+}
+
+/** Quita enemigos, proyectiles y chispas sueltas (al cambiar de zona o descansar). */
+export function clearCombat(state: EncounterState): void {
+  state.enemies.length = 0;
+  state.projectiles.length = 0;
+  state.sparks.length = 0;
 }
 
 /** Enemigos vivos ahora mismo. */
@@ -125,7 +150,8 @@ export function updateEncounter(state: EncounterState, dt: number, input: Encoun
         )
       )
         continue;
-      const dealt = hitEnemy(enemy, step.damage, combo.swingId, player.x, player.z);
+      const damage = Math.round(step.damage * (input.damageFactor ?? 1));
+      const dealt = hitEnemy(enemy, damage, combo.swingId, player.x, player.z);
       if (dealt <= 0) continue;
       const killed = !isAlive(enemy);
       events.push({ type: 'enemyHit', id: enemy.id, kind: enemy.kind, damage: dealt, killed });
@@ -208,7 +234,7 @@ export function updateEncounter(state: EncounterState, dt: number, input: Encoun
   pruneSparks(state.sparks);
 
   // 6) Oleadas (se detienen mientras el jugador está caído).
-  if (playerAlive) {
+  if (playerAlive && state.wavesEnabled) {
     const wasFighting = state.waves.phase === 'fighting';
     const clearedNumber = waveNumber(state.waves);
     const orders = updateWaves(state.waves, dt, aliveEnemies(state), player, state.rng);

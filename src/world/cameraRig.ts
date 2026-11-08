@@ -81,8 +81,9 @@ export function updateCameraPose(
   blocks: readonly BlockData[],
   frameSeconds: number,
   balance: CameraBalance = CAMERA_BALANCE,
+  groundAt: (x: number, z: number) => number = () => 0,
 ): CameraPose {
-  const target = { x: px, y: balance.targetHeight, z: pz };
+  const target = { x: px, y: balance.targetHeight + groundAt(px, pz), z: pz };
   const cosPitch = Math.cos(rig.pitch);
   // Dirección desde el objetivo hacia la cámara (detrás del personaje respecto a donde mira la cámara).
   const back = {
@@ -97,10 +98,13 @@ export function updateCameraPose(
   rig.distance = rig.distance + (allowed - rig.distance) * t;
   // Nunca más lejos de lo permitido en este fotograma: así no se asoma tras la pared.
   rig.distance = Math.min(rig.distance, Math.max(allowed, balance.minDistance));
+  const camX = target.x + back.x * rig.distance;
+  const camZ = target.z + back.z * rig.distance;
   return {
-    x: target.x + back.x * rig.distance,
-    y: Math.max(target.y + back.y * rig.distance, 0.3),
-    z: target.z + back.z * rig.distance,
+    x: camX,
+    // Nunca por debajo del suelo, también en las elevaciones del terreno.
+    y: Math.max(target.y + back.y * rig.distance, groundAt(camX, camZ) + 0.3),
+    z: camZ,
     targetX: target.x,
     targetY: target.y,
     targetZ: target.z,

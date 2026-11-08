@@ -55,12 +55,17 @@ export class DummyView {
     this.barRoot.billboardMode = TransformNode.BILLBOARDMODE_ALL;
   }
 
+  /** En las zonas sin muñeco no se dibuja. */
+  setVisible(visible: boolean): void {
+    this.root.setEnabled(visible);
+  }
+
   /**
    * Actualiza la vista del muñeco. `flash` es la intensidad del destello de golpe (0 si "Reducir parpadeo"),
    * `reduceMotion` atenúa el bamboleo.
    */
-  update(dummy: DummyState, flash: number, reduceMotion: boolean, frameSeconds: number): void {
-    this.root.position.set(dummy.x, 0, dummy.z);
+  update(dummy: DummyState, flash: number, reduceMotion: boolean, frameSeconds: number, groundY = 0): void {
+    this.root.position.set(dummy.x, groundY, dummy.z);
     const ratio = Math.max(0, dummy.health / dummy.maxHealth);
     this.barFill.scaling.x = Math.max(ratio, 0.0001);
     this.barFill.position.x = -(BAR_WIDTH * (1 - ratio)) / 2;

@@ -125,6 +125,20 @@ export function heal(health: HealthState, quarters: number): number {
   return health.quarters - before;
 }
 
+/** Fija la vida máxima (fragmentos de corazón) y la vida actual, dentro de los límites. */
+export function setLife(health: HealthState, max: number, quarters: number): void {
+  health.maxQuarters = Math.max(1, Math.round(max));
+  health.quarters = Math.min(Math.max(Math.round(quarters), 1), health.maxQuarters);
+}
+
+/** Vida recién cargada de un guardado: sin golpes ni tiempos pendientes. */
+export function reviveLoaded(health: HealthState): void {
+  health.invulnerable = 0;
+  health.knockTime = 0;
+  health.deadFor = -1;
+  health.sinceHit = Number.POSITIVE_INFINITY;
+}
+
 /** Deja la vida como al empezar (al reintentar). */
 export function resetHealth(health: HealthState): void {
   health.quarters = health.maxQuarters;

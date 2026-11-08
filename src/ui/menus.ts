@@ -2,17 +2,23 @@ import type { SettingsStore } from '../core/settingsStore';
 import { CHARACTER_IDS, CHARACTERS, type CharacterId } from '../data/characters';
 import { META } from '../data/meta';
 import { TEXTS } from '../data/texts';
+import type { Progress } from '../game/progress';
 import { button, h } from './dom';
+import { createDialogueBox, createInventoryPanel, createShopPanel, type DialogueView } from './gameScreens';
 import { createSettingsPanel } from './settingsPanel';
 
 export interface MenuActions {
   onPlayFromStart(): void;
+  onContinue(): void;
   onPreviewCharacter(id: CharacterId): void;
   onConfirmCharacter(id: CharacterId): void;
   onResume(): void;
   onToStart(): void;
   onClearData(): void;
   onRetry(): void;
+  onDrink(): 'drunk' | 'full' | 'none';
+  onCloseGameMenu(): void;
+  onShopChange(): void;
 }
 
 function controlsList(): HTMLElement {
@@ -25,7 +31,8 @@ function controlsList(): HTMLElement {
 
 /** Pantallas del juego en el DOM: inicio, elección de personaje, pausa y ajustes. */
 export class Menus {
-  private current: 'start' | 'select' | 'pause' | 'settings' | 'death' | null = null;
+  private current:
+    'start' | 'select' | 'pause' | 'settings' | 'death' | 'dialogue' | 'shop' | 'inventory' | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -47,8 +54,16 @@ export class Menus {
     this.root.hidden = true;
   }
 
-  showStart(): void {
+  /** Pantalla de inicio. Con una partida guardada ofrece "Continuar" y "Nueva partida". */
+  showStart(hasSave: boolean): void {
     const t = TEXTS.start;
+    const actions: HTMLElement[] = hasSave
+      ? [
+          button(t.continueGame, () => this.actions.onContinue(), 'btn btn-primary'),
+          button(t.newGame, () => this.showNewGameConfirm()),
+        ]
+      : [button(t.play, () => this.actions.onPlayFromStart(), 'btn btn-primary')];
+    actions.push(button(t.settings, () => this.showSettings(() => this.showStart(hasSave))));
     this.mount(
       'start',
       h('section', { className: 'panel panel-wide', attrs: { 'aria-labelledby': 'game-title' } }, [
@@ -61,13 +76,28 @@ export class Menus {
         ]),
         h('h2', { text: t.controlsTitle }),
         controlsList(),
-        h('div', { className: 'row' }, [
-          button(t.play, () => this.actions.onPlayFromStart(), 'btn btn-primary'),
-          button(t.settings, () => this.showSettings(() => this.showStart())),
-        ]),
+        h('div', { className: 'row' }, actions),
         h('p', { className: 'hint', text: t.keyboardExit }),
       ]),
     );
+  }
+
+  /** La partida guardada no se pierde sin confirmarlo. */
+  private showNewGameConfirm(): void {
+    const t = TEXTS.start;
+    const panel = h(
+      'section',
+      { className: 'panel', attrs: { role: 'alertdialog', 'aria-labelledby': 'new-title' } },
+      [
+        h('h2', { text: t.newGame, attrs: { id: 'new-title' } }),
+        h('p', { text: t.newGameConfirm }),
+        h('div', { className: 'row' }, [
+          button(t.newGameNo, () => this.showStart(true), 'btn btn-primary'),
+          button(t.newGameYes, () => this.actions.onPlayFromStart(), 'btn btn-danger'),
+        ]),
+      ],
+    );
+    this.mount('start', panel);
   }
 
   showSelect(selected: CharacterId): void {
@@ -126,16 +156,42 @@ export class Menus {
   }
 
   /** Pantalla al caer: "Reintentar" tiene el foco para seguir con el teclado. */
-  showDeath(): void {
+  showDeath(text: string): void {
     const t = TEXTS.death;
     this.mount(
       'death',
       h('section', { className: 'panel', attrs: { 'aria-labelledby': 'death-title', role: 'alertdialog' } }, [
         h('h2', { text: t.title, attrs: { id: 'death-title' } }),
-        h('p', { text: t.text }),
+        h('p', { text }),
         button(t.retry, () => this.actions.onRetry(), 'btn btn-primary'),
         button(t.toStart, () => this.actions.onToStart(), 'btn btn-secondary'),
       ]),
+    );
+  }
+
+  /** Una línea de diálogo, abajo, con el mundo visible. */
+  showDialogue(view: DialogueView): void {
+    const box = createDialogueBox(view);
+    this.mount('dialogue', box.root, box.focus);
+  }
+
+  showShop(progress: Progress): void {
+    const shop = createShopPanel(
+      progress,
+      () => this.actions.onCloseGameMenu(),
+      () => this.actions.onShopChange(),
+    );
+    this.mount('shop', shop.root, shop.focus);
+  }
+
+  showInventory(progress: Progress): void {
+    this.mount(
+      'inventory',
+      createInventoryPanel(
+        progress,
+        () => this.actions.onDrink(),
+        () => this.actions.onCloseGameMenu(),
+      ),
     );
   }
 

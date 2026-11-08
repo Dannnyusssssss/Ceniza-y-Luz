@@ -329,5 +329,176 @@
     ],
     "triangles": 6816,
     "textures": []
+  },
+  "chest": {
+    "model": "chest",
+    "clips": {},
+    "bones": [],
+    "triangles": 916,
+    "textures": []
+  },
+  "beacon": {
+    "model": "beacon",
+    "clips": {},
+    "bones": [],
+    "triangles": 1104,
+    "textures": []
+  },
+  "switch": {
+    "model": "switch",
+    "clips": {},
+    "bones": [],
+    "triangles": 528,
+    "textures": []
+  },
+  "pushblock": {
+    "model": "pushblock",
+    "clips": {},
+    "bones": [],
+    "triangles": 276,
+    "textures": []
+  },
+  "plate": {
+    "model": "plate",
+    "clips": {},
+    "bones": [],
+    "triangles": 176,
+    "textures": []
+  },
+  "gate": {
+    "model": "gate",
+    "clips": {},
+    "bones": [],
+    "triangles": 664,
+    "textures": []
+  },
+  "ilse": {
+    "model": "ilse",
+    "clips": {
+      "idle": {
+        "frames": 150,
+        "seconds": 2.5
+      },
+      "talk": {
+        "frames": 96,
+        "seconds": 1.6
+      }
+    },
+    "bones": [
+      "root",
+      "hips",
+      "spine",
+      "chest",
+      "neck",
+      "head",
+      "hair.1",
+      "hair.2",
+      "cape",
+      "scarf",
+      "shoulder.L",
+      "upperarm.L",
+      "forearm.L",
+      "hand.L",
+      "shoulder.R",
+      "upperarm.R",
+      "forearm.R",
+      "hand.R",
+      "thigh.L",
+      "shin.L",
+      "foot.L",
+      "thigh.R",
+      "shin.R",
+      "foot.R"
+    ],
+    "triangles": 9452,
+    "textures": [
+      "ilse-face.png"
+    ]
+  },
+  "oren": {
+    "model": "oren",
+    "clips": {
+      "idle": {
+        "frames": 150,
+        "seconds": 2.5
+      },
+      "talk": {
+        "frames": 96,
+        "seconds": 1.6
+      }
+    },
+    "bones": [
+      "root",
+      "hips",
+      "spine",
+      "chest",
+      "neck",
+      "head",
+      "hair.1",
+      "hair.2",
+      "cape",
+      "scarf",
+      "shoulder.L",
+      "upperarm.L",
+      "forearm.L",
+      "hand.L",
+      "shoulder.R",
+      "upperarm.R",
+      "forearm.R",
+      "hand.R",
+      "thigh.L",
+      "shin.L",
+      "foot.L",
+      "thigh.R",
+      "shin.R",
+      "foot.R"
+    ],
+    "triangles": 8116,
+    "textures": [
+      "oren-face.png"
+    ]
+  },
+  "teo": {
+    "model": "teo",
+    "clips": {
+      "idle": {
+        "frames": 150,
+        "seconds": 2.5
+      },
+      "talk": {
+        "frames": 96,
+        "seconds": 1.6
+      }
+    },
+    "bones": [
+      "root",
+      "hips",
+      "spine",
+      "chest",
+      "neck",
+      "head",
+      "hair.1",
+      "hair.2",
+      "cape",
+      "scarf",
+      "shoulder.L",
+      "upperarm.L",
+      "forearm.L",
+      "hand.L",
+      "shoulder.R",
+      "upperarm.R",
+      "forearm.R",
+      "hand.R",
+      "thigh.L",
+      "shin.L",
+      "foot.L",
+      "thigh.R",
+      "shin.R",
+      "foot.R"
+    ],
+    "triangles": 8960,
+    "textures": [
+      "teo-face.png"
+    ]
   }
 }

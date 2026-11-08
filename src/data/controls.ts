@@ -11,6 +11,7 @@ export type Action =
   | 'attack'
   | 'dodge'
   | 'interact'
+  | 'inventory'
   | 'pause'
   | 'mute'
   | 'camLeft'
@@ -28,6 +29,7 @@ export const KEY_BINDINGS: Readonly<Record<Action, readonly string[]>> = {
   attack: ['KeyJ'],
   dodge: ['Space'],
   interact: ['KeyE'],
+  inventory: ['KeyI'],
   pause: ['Escape', 'KeyP'],
   mute: ['KeyM'],
   camLeft: ['ArrowLeft'],

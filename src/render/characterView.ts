@@ -66,6 +66,16 @@ export class CharacterView {
     this.animator = new CharacterAnimator(this.model.animations, [...this.model.nodes.values()], clips);
   }
 
+  /** Muestra u oculta la Hoja (antes de cogerla en el santuario, el personaje no la lleva). */
+  setBladeVisible(visible: boolean): void {
+    for (const mesh of this.blade.meshes) mesh.setEnabled(visible);
+  }
+
+  /** Transparencia del personaje (el gemelo arrastrado por la Bruma en la intro). */
+  setVisibility(visibility: number): void {
+    for (const mesh of [...this.model.meshes, ...this.blade.meshes]) mesh.visibility = visibility;
+  }
+
   update(input: AnimatorInput, dt: number): void {
     this.animator.update(input, dt);
   }

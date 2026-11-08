@@ -4,7 +4,29 @@
  */
 
 export type SoundId =
-  'swing' | 'hit' | 'kill' | 'hurt' | 'dodge' | 'warn' | 'slam' | 'shoot' | 'cut' | 'spark' | 'wave' | 'down';
+  | 'swing'
+  | 'hit'
+  | 'kill'
+  | 'hurt'
+  | 'dodge'
+  | 'warn'
+  | 'slam'
+  | 'shoot'
+  | 'cut'
+  | 'spark'
+  | 'wave'
+  | 'down'
+  | 'open'
+  | 'rest'
+  | 'blade'
+  | 'door'
+  | 'click'
+  | 'wrong'
+  | 'push'
+  | 'solved'
+  | 'talk'
+  | 'potion'
+  | 'buy';
 
 /** Volumen general (antes del compresor). */
 const MASTER_VOLUME = 0.32;
@@ -105,6 +127,45 @@ export class Sfx {
         break;
       case 'down':
         this.tone(out, now, 'triangle', 330, 110, 0.9, 0.3);
+        break;
+      case 'open':
+        this.noiseBurst(out, now, 0.25, 300, 800, 0.2);
+        this.tone(out, now + 0.12, 'triangle', 523, 784, 0.35, 0.22);
+        break;
+      case 'rest':
+        this.tone(out, now, 'sine', 392, 392, 0.5, 0.2);
+        this.tone(out, now + 0.2, 'sine', 587, 587, 0.7, 0.2);
+        break;
+      case 'blade':
+        this.tone(out, now, 'triangle', 440, 880, 0.5, 0.25);
+        this.tone(out, now + 0.25, 'sine', 1175, 1175, 0.7, 0.16);
+        break;
+      case 'door':
+        this.noiseBurst(out, now, 0.9, 160, 90, 0.3);
+        this.tone(out, now, 'sine', 70, 55, 0.9, 0.3);
+        break;
+      case 'click':
+        this.tone(out, now, 'square', 640, 640, 0.06, 0.1);
+        break;
+      case 'wrong':
+        this.tone(out, now, 'triangle', 196, 147, 0.22, 0.2);
+        break;
+      case 'push':
+        this.noiseBurst(out, now, 0.3, 240, 140, 0.32);
+        break;
+      case 'solved':
+        this.tone(out, now, 'triangle', 523, 523, 0.18, 0.22);
+        this.tone(out, now + 0.16, 'triangle', 659, 659, 0.18, 0.22);
+        this.tone(out, now + 0.32, 'triangle', 784, 784, 0.4, 0.22);
+        break;
+      case 'talk':
+        this.tone(out, now, 'sine', 520, 600, 0.07, 0.1);
+        break;
+      case 'potion':
+        this.tone(out, now, 'sine', 392, 784, 0.32, 0.18);
+        break;
+      case 'buy':
+        this.tone(out, now, 'sine', 1046, 1318, 0.14, 0.14);
         break;
     }
   }

@@ -4,8 +4,8 @@ export type DummyBalance = typeof DUMMY_BALANCE;
 
 /** Muñeco de práctica: recibe golpes, se desvanece al llegar a cero y vuelve tras un momento. */
 export interface DummyState {
-  readonly x: number;
-  readonly z: number;
+  x: number;
+  z: number;
   health: number;
   readonly maxHealth: number;
   /** Último golpe recibido (para no contar dos veces el mismo). */

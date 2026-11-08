@@ -63,12 +63,16 @@ const COLORS = {
   ash: '#9a8fb4',
 } as const;
 const BAR_WIDTH = 0.8;
+/** Más lejos de esto un enemigo no se dibuja (la niebla ya casi lo tapa): ahorra llamadas de dibujo. */
+const VIEW_DISTANCE = 42;
 
 /** Materiales y mallas compartidos por todas las vistas de enemigos. */
 interface Shared {
   readonly scene: Scene;
   readonly materials: ToonMaterials;
   readonly shadows: ShadowGenerator | null;
+  /** Altura del suelo de la zona actual. */
+  groundAt: (x: number, z: number) => number;
   readonly ringMaterial: StandardMaterial;
   readonly ringFillMaterial: StandardMaterial;
 }
@@ -96,7 +100,7 @@ class EnemyView {
   constructor(
     private readonly enemy: EnemyState,
     model: LoadedModel,
-    shared: Shared,
+    private readonly shared: Shared,
   ) {
     const { scene, materials } = shared;
     this.root = new TransformNode(`enemy-${enemy.id}`, scene);
@@ -166,7 +170,9 @@ class EnemyView {
   update(alpha: number, dt: number, reduceFlashing: boolean, reduceMotion: boolean): void {
     const e = this.enemy;
     this.time += dt;
-    this.root.position.set(lerp(e.prevX, e.x, alpha), 0, lerp(e.prevZ, e.z, alpha));
+    const rx = lerp(e.prevX, e.x, alpha);
+    const rz = lerp(e.prevZ, e.z, alpha);
+    this.root.position.set(rx, this.shared.groundAt(rx, rz), rz);
     this.root.rotation.y = lerpAngle(e.prevYaw, e.yaw, alpha);
 
     // Animación: el clip de la fase, en el fotograma que marca la lógica (los ciclos corren por su cuenta).
@@ -236,8 +242,9 @@ class EnemyView {
       this.ring.setEnabled(show);
       this.ringFill.setEnabled(show);
       if (show) {
-        this.ring.position.set(e.targetX, 0.05, e.targetZ);
-        this.ringFill.position.set(e.targetX, 0.04, e.targetZ);
+        const gy = this.shared.groundAt(e.targetX, e.targetZ);
+        this.ring.position.set(e.targetX, gy + 0.05, e.targetZ);
+        this.ringFill.position.set(e.targetX, gy + 0.04, e.targetZ);
         const fill = e.phase === 'windup' ? Math.max(0.05, warn) : 1;
         this.ringFill.scaling.set(fill, fill, 1);
       }
@@ -270,7 +277,7 @@ class ProjectileView {
 
   constructor(
     private readonly projectile: Projectile,
-    shared: Shared,
+    private readonly shared: Shared,
     haloMaterial: StandardMaterial,
   ) {
     const d = projectile.radius * 2;
@@ -285,7 +292,9 @@ class ProjectileView {
   update(alpha: number, dt: number): void {
     const p = this.projectile;
     this.time += dt;
-    this.core.position.set(lerp(p.prevX, p.x, alpha), 1.0, lerp(p.prevZ, p.z, alpha));
+    const x = lerp(p.prevX, p.x, alpha);
+    const z = lerp(p.prevZ, p.z, alpha);
+    this.core.position.set(x, this.shared.groundAt(x, z) + 1.0, z);
     this.core.scaling.setAll(1 + 0.08 * Math.sin(this.time * 7));
   }
 
@@ -313,7 +322,7 @@ export class EncounterView {
     const ringMaterial = unlitMaterial('dangerRing', COLORS.ring, scene, 0.9);
     const ringFillMaterial = unlitMaterial('dangerFill', COLORS.ring, scene, 0.28);
     ringFillMaterial.zOffset = -2;
-    this.shared = { scene, materials, shadows, ringMaterial, ringFillMaterial };
+    this.shared = { scene, materials, shadows, groundAt: () => 0, ringMaterial, ringFillMaterial };
     this.haloMaterial = unlitMaterial('shotHalo', COLORS.ember, scene, 0.3);
     const sparkMesh = CreatePolyhedron('sparks', { type: 1, size: 0.07 }, scene);
     sparkMesh.scaling.y = 1.4;
@@ -324,6 +333,11 @@ export class EncounterView {
     );
   }
 
+  /** Indica el relieve de la zona actual. */
+  setGround(groundAt: (x: number, z: number) => number): void {
+    this.shared.groundAt = groundAt;
+  }
+
   /** Destello blanco sobre un enemigo golpeado (quien llama respeta el límite de 3 por segundo). */
   flashEnemy(id: number): void {
     this.enemies.get(id)?.flash();
@@ -331,7 +345,7 @@ export class EncounterView {
 
   /** Nube de ceniza en un punto (proyectil que estalla o se corta). */
   burst(x: number, z: number, reduceMotion: boolean): void {
-    this.ash.emit(x, 0.9, z, reduceMotion ? 5 : 10, 0.25, 0.2);
+    this.ash.emit(x, this.shared.groundAt(x, z) + 0.9, z, reduceMotion ? 5 : 10, 0.25, 0.2);
   }
 
   update(
@@ -340,6 +354,8 @@ export class EncounterView {
     dt: number,
     reduceFlashing: boolean,
     reduceMotion: boolean,
+    viewerX: number,
+    viewerZ: number,
   ): void {
     this.time += dt;
     // Enemigos: crear las vistas nuevas, actualizar y quitar las de los que ya no están.
@@ -351,13 +367,16 @@ export class EncounterView {
         view = new EnemyView(enemy, this.models[enemy.kind], this.shared);
         this.enemies.set(enemy.id, view);
       }
-      view.update(alpha, dt, reduceFlashing, reduceMotion);
+      const near = Math.hypot(enemy.x - viewerX, enemy.z - viewerZ) < VIEW_DISTANCE;
+      view.root.setEnabled(near);
+      if (near) view.update(alpha, dt, reduceFlashing, reduceMotion);
       if (enemy.phase === 'dying' && dt > 0) {
         // Ceniza mientras se deshace.
         const size = SIZE[enemy.kind];
         const rate = (reduceMotion ? 20 : 45) * size;
         const n = Math.floor(rate * dt + Math.random());
-        this.ash.emit(enemy.x, 0.1, enemy.z, n, enemy.stats.radius, TOP[enemy.kind] * 0.8);
+        const gy = this.shared.groundAt(enemy.x, enemy.z);
+        this.ash.emit(enemy.x, gy + 0.1, enemy.z, n, enemy.stats.radius, TOP[enemy.kind] * 0.8);
       }
     }
     for (const [id, view] of this.enemies) {
@@ -388,9 +407,19 @@ export class EncounterView {
     this.sparks.begin();
     for (const s of state.sparks) {
       const bob = reduceMotion ? 0 : Math.sin(this.time * 3 + s.x) * 0.04;
-      this.sparks.push(s.x, s.y + bob, s.z, this.time * 2.5 + s.z, 1);
+      this.sparks.push(s.x, this.shared.groundAt(s.x, s.z) + s.y + bob, s.z, this.time * 2.5 + s.z, 1);
     }
     this.sparks.end();
+    this.ash.update(dt);
+  }
+
+  /** Nube de ceniza de la Bruma en un punto (intro). */
+  mist(x: number, z: number, count: number, spread: number, height: number): void {
+    this.ash.emit(x, this.shared.groundAt(x, z) + 0.2, z, count, spread, height);
+  }
+
+  /** Avanza solo la ceniza (la intro no usa enemigos del combate). */
+  updateAsh(dt: number): void {
     this.ash.update(dt);
   }
 

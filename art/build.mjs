@@ -19,9 +19,28 @@ import { COMBO_BALANCE, DODGE_BALANCE } from '../src/data/balance.ts';
 import { BLADE_COLORS, CHARACTERS } from '../src/data/characters.ts';
 import { LUMBRE_PALETTE } from '../src/data/palettes.ts';
 import { ENEMIES } from '../src/data/enemies.ts';
+import { NPCS } from '../src/data/npcs.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const MODELS = ['blade', 'dummy', 'alba', 'ciro', 'brumilla', 'acechador', 'coloso', 'tirador'];
+const MODELS = [
+  'blade',
+  'dummy',
+  'alba',
+  'ciro',
+  'brumilla',
+  'acechador',
+  'coloso',
+  'tirador',
+  'chest',
+  'beacon',
+  'switch',
+  'pushblock',
+  'plate',
+  'gate',
+  'ilse',
+  'oren',
+  'teo',
+];
 const DEFAULT_BLENDER = 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe';
 const REGISTRY = join(ROOT, 'art', 'blend', 'generated.json');
 const GENERATED_TS = join(ROOT, 'src', 'data', 'generated', 'models.ts');
@@ -58,6 +77,7 @@ function gameData() {
     blade: BLADE_COLORS,
     characters: CHARACTERS,
     enemies: ENEMIES,
+    npcs: NPCS,
     timings: {
       dodge: DODGE_BALANCE.duration,
       attacks: COMBO_BALANCE.steps.map((s) => ({ duration: s.duration, hitFrom: s.hitFrom, hitTo: s.hitTo })),

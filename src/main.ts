@@ -2,6 +2,8 @@ import './styles.css';
 import { createEngine } from './engine/createEngine';
 import { DEFAULT_BACKEND, readBackendPreference } from './engine/backendPreference';
 import { GameSession } from './engine/session';
+import { readGameMode } from './engine/gameMode';
+import { SaveSlot } from './engine/saveSlot';
 import { FixedStepLoop } from './core/loop';
 import { BrowserInput, type InputCallbacks } from './core/input';
 import { SafeStorage } from './core/storage';
@@ -89,7 +91,8 @@ async function start(): Promise<void> {
   engine.onContextLostObservable.add(() => showFatal(TEXTS.errors.contextLost));
   engine.onContextRestoredObservable.add(() => hideFatal());
 
-  const settings = new SettingsStore(SafeStorage.fromBrowser(), prefersReducedMotion());
+  const storage = SafeStorage.fromBrowser();
+  const settings = new SettingsStore(storage, prefersReducedMotion());
   // La app se crea después de la entrada; los avisos de la entrada se le reenvían.
   let callbacks: InputCallbacks | null = null;
   const input = new BrowserInput(canvas, {
@@ -98,7 +101,8 @@ async function start(): Promise<void> {
     onFocusLost: () => callbacks?.onFocusLost(),
     onSystemAction: (action) => callbacks?.onSystemAction(action),
   });
-  const session = await GameSession.create(engine, input, settings, 'alba', showLoading);
+  const mode = readGameMode(window.location.search);
+  const session = await GameSession.create(engine, input, settings, 'alba', mode, showLoading);
   hideLoading();
   const debug = new DebugOverlay(
     byId('debug'),
@@ -107,8 +111,20 @@ async function start(): Promise<void> {
     backend,
     () => TEXTS.settings.qualityOptions[settings.value.quality],
   );
-  const app = new App(canvas, byId('menu'), session, input, settings, new Hud(byId('hud')), debug);
+  const app = new App(
+    canvas,
+    byId('menu'),
+    byId('fade'),
+    session,
+    input,
+    settings,
+    new SaveSlot(storage),
+    new Hud(byId('hud')),
+    debug,
+  );
   callbacks = app.inputCallbacks;
+  // Solo en desarrollo: acceso desde la consola para probar la partida (ver docs/DEBUG.md).
+  if (import.meta.env.DEV) Object.assign(window, { game: { session, app } });
   app.start();
 
   const loop = new FixedStepLoop();

@@ -29,6 +29,15 @@ MODULES = {
     "acechador": "acechador",
     "coloso": "coloso",
     "tirador": "tirador",
+    "chest": "world_props",
+    "beacon": "world_props",
+    "switch": "world_props",
+    "pushblock": "world_props",
+    "plate": "world_props",
+    "gate": "world_props",
+    "ilse": "villagers",
+    "oren": "villagers",
+    "teo": "villagers",
 }
 
 

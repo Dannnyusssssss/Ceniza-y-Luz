@@ -13,6 +13,14 @@ El juego usa WebGPU si el navegador lo admite y, si no, WebGL2. Para forzar uno,
 
 Cualquier otro valor se ignora. El motor en uso queda en el atributo `data-backend` del `<canvas id="game">`.
 
+## Arena de oleadas
+
+Con `?modo=arena` el juego abre la arena de práctica en lugar de la aventura: oleadas cada vez más difíciles de los cuatro tipos de enemigo, para probar el balance del combate. No se guarda nada y no aparece en ningún menú. Cualquier otro valor se ignora.
+
+## Acceso desde la consola
+
+Solo con el servidor de desarrollo (`npm run dev`), `window.game` da acceso a `session` y `app`. Por ejemplo, `game.session.changeZone('bosque', 'fromLumbre')` lleva a otra zona y `game.session.progress` muestra el progreso. En el build no existe.
+
 ## Overlay de depuración
 
 Oculto por defecto. Se muestra y se oculta con **F3** en cualquier pantalla. Se refresca cuatro veces por segundo y, mientras está oculto, no mide nada (no cuesta rendimiento).

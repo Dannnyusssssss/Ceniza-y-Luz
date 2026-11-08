@@ -41,6 +41,8 @@ export interface EnemyState {
   phaseLength: number;
   /** Ya vio al jugador (en la arena, desde que aparece). */
   alerted: boolean;
+  /** Vive en una zona: espera hasta ver al jugador y lo pierde de vista si se aleja. */
+  readonly roaming: boolean;
   /** Punto del golpe del Coloso, fijado al empezar el aviso (se dibuja en el suelo). */
   targetX: number;
   targetZ: number;
@@ -104,6 +106,7 @@ export function createEnemy(
   z: number,
   yaw: number,
   healthFactor = 1,
+  roaming = false,
 ): EnemyState {
   const stats = ENEMIES[kind];
   const maxHealth = Math.max(1, Math.round(stats.maxHealth * healthFactor));
@@ -119,10 +122,11 @@ export function createEnemy(
     prevYaw: yaw,
     health: maxHealth,
     maxHealth,
-    phase: 'spawning',
+    phase: roaming ? 'idle' : 'spawning',
     time: 0,
     phaseLength: 0,
-    alerted: true,
+    alerted: !roaming,
+    roaming,
     targetX: x,
     targetZ: z,
     dirX: 0,
@@ -264,6 +268,14 @@ export function updateEnemy(
 
   if (enemy.phase === 'windup' || enemy.phase === 'attack' || enemy.phase === 'recover') {
     runAttackPhases(enemy, dt, ctx, dist, out, true);
+    finishStep(enemy, dt);
+    return out;
+  }
+
+  // Un enemigo de zona pierde de vista al jugador que se aleja y se queda donde está.
+  if (enemy.roaming && dist > stats.detectRange * rules.loseInterestFactor) {
+    enemy.alerted = false;
+    setPhase(enemy, 'idle');
     finishStep(enemy, dt);
     return out;
   }

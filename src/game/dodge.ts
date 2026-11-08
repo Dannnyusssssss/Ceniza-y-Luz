@@ -8,10 +8,12 @@ export interface DodgeState {
   time: number;
   dirX: number;
   dirZ: number;
+  /** Fracción de la espera normal (el Talismán de Brasa la acorta). */
+  cooldownFactor: number;
 }
 
 export function createDodge(): DodgeState {
-  return { phase: 'ready', time: 0, dirX: 0, dirZ: 1 };
+  return { phase: 'ready', time: 0, dirX: 0, dirZ: 1, cooldownFactor: 1 };
 }
 
 /** Intenta empezar una esquiva en la dirección dada (se normaliza). Devuelve false si no está lista. */
@@ -34,7 +36,7 @@ export function updateDodge(state: DodgeState, dt: number, balance: DodgeBalance
     state.phase = 'cooldown';
     state.time -= balance.duration;
   }
-  if (state.phase === 'cooldown' && state.time >= balance.cooldown) {
+  if (state.phase === 'cooldown' && state.time >= balance.cooldown * state.cooldownFactor) {
     state.phase = 'ready';
     state.time = 0;
   }

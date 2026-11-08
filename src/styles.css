@@ -40,6 +40,11 @@ main {
   outline-offset: -3px;
 }
 
+/* Jugando, el marco de foco no hace falta: se ve quién tiene el teclado. Al llegar con Tab sí se muestra. */
+#game.is-playing:focus-visible {
+  outline: none;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -62,6 +67,15 @@ main {
   background: var(--text);
   color: var(--bg);
   padding: 0.5rem 1rem;
+}
+
+/* Fundido entre zonas: siempre una bajada suave a negro, nunca un destello. */
+.fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Pantallas */
@@ -433,6 +447,148 @@ details summary {
   transform: translateX(-50%);
   white-space: nowrap;
   color: var(--muted);
+}
+
+/* Objetivo, avisos y lo que se puede usar */
+.hud .hud-objective {
+  max-width: 22rem;
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+.hud-potions {
+  font-weight: 600;
+}
+
+.hud .hud-prompt {
+  position: absolute;
+  bottom: 4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  outline: 2px solid var(--accent);
+  white-space: nowrap;
+}
+
+.hud .hud-message {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(36rem, 90%);
+  padding: 0.6rem 1.1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.hud-prompt[hidden],
+.hud-message[hidden],
+.hud-objective[hidden],
+.hud-wave[hidden],
+.hud-dummy[hidden] {
+  display: none;
+}
+
+/* Diálogos: el fondo propio garantiza el contraste sobre el mundo 3D. */
+.screen-dialogue {
+  background: none;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dialogue {
+  box-sizing: border-box;
+  width: min(46rem, 100%);
+  padding: 1rem 1.5rem 1.1rem;
+  border-radius: 0.75rem;
+  background: rgba(16, 12, 24, 0.95);
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+.dialogue-name {
+  margin: 0 0 0.25rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.dialogue-text {
+  margin: 0 0 0.85rem;
+  font-size: 1.15rem;
+  line-height: 1.45;
+}
+
+.dialogue-text.is-narrator {
+  font-style: italic;
+}
+
+.dialogue-row {
+  align-items: center;
+}
+
+.dialogue-hint {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Tienda e inventario */
+.shop-sparks {
+  margin: 0;
+  font-weight: 700;
+  color: #ffd86b;
+}
+
+.shop-list,
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shop-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.shop-info {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-direction: column;
+}
+
+.shop-name {
+  font-weight: 700;
+}
+
+.shop-text {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.shop-price {
+  font-weight: 600;
+  color: #ffd86b;
+}
+
+.btn:disabled {
+  border-color: rgba(216, 207, 224, 0.45);
+  background: transparent;
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 /* Depuración */

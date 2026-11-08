@@ -64,7 +64,7 @@ def _hand(blob, sx, k):
     blob.chain([thumb_root, thumb_tip], [0.0095 * k, 0.0085 * k])
 
 
-def body_object(model):
+def body_object(model, target_tris=3000):
     """Malla del cuerpo completa (sin pintar), cerrada y con suela plana."""
     k = LIMB_SCALE[model]
     kl = LEG_SCALE[model]
@@ -115,7 +115,7 @@ def body_object(model):
         )
     body = blob.to_object("body", resolution=0.0065)
     s.cut_below(body, 0.004)
-    s.decimate(body, 3000)
+    s.decimate(body, target_tris)
     c.smooth(body)
     return body
 

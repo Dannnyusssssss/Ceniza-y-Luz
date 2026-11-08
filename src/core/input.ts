@@ -1,6 +1,9 @@
 import { MOUSE_ATTACK_BUTTON } from '../data/controls';
 import { actionForCode, InputState } from './inputState';
 
+/** Acciones que se atienden también con el juego detenido (menús y diálogos). */
+export type SystemAction = 'pause' | 'mute' | 'debug' | 'inventory' | 'interact';
+
 export interface InputCallbacks {
   /** Cambió la captura del puntero (true = capturado). */
   onPointerLockChange(locked: boolean): void;
@@ -9,7 +12,7 @@ export interface InputCallbacks {
   /** La ventana perdió el foco o la pestaña dejó de verse. */
   onFocusLost(): void;
   /** Se pulsó una acción de sistema (pausa, silencio, depuración) aunque el juego esté en pausa. */
-  onSystemAction(action: 'pause' | 'mute' | 'debug'): void;
+  onSystemAction(action: SystemAction): void;
 }
 
 /**
@@ -85,7 +88,16 @@ export class BrowserInput {
       if (action !== 'pause') e.preventDefault();
       return;
     }
-    if (!this.gameplayActive) return;
+    if (action === 'inventory') {
+      if (!e.repeat) this.callbacks.onSystemAction(action);
+      e.preventDefault();
+      return;
+    }
+    if (!this.gameplayActive) {
+      // Con el juego detenido, E sirve para avanzar los diálogos.
+      if (action === 'interact' && !e.repeat) this.callbacks.onSystemAction(action);
+      return;
+    }
     // Solo se bloquea la acción por defecto de las teclas de juego (p. ej. el desplazamiento con flechas o Espacio).
     e.preventDefault();
     this.state.keyDown(e.code, e.repeat);

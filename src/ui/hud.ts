@@ -1,5 +1,7 @@
 import type { DummyState } from '../game/dummy';
 import type { HudSnapshot } from '../engine/session';
+import type { Progress } from '../game/progress';
+import { promptText } from './labels';
 import { TEXTS } from '../data/texts';
 import { h } from './dom';
 
@@ -9,6 +11,8 @@ const HEART_PATH =
 const FRACTIONS = ['', '¼', '½', '¾'];
 /** Tiempo que se ve el aviso de oleada (s). */
 const BANNER_MS = 2200;
+/** Tiempo que se ve un aviso: suficiente para leerlo; los importantes también quedan en el objetivo. */
+const MESSAGE_MS = 5000;
 
 let heartId = 0;
 
@@ -66,6 +70,15 @@ export class Hud {
   private readonly dummyLabel = h('p', { className: 'hud-dummy' });
   private readonly muted = h('p', { className: 'hud-badge', text: TEXTS.hud.muted });
   private readonly hint = h('p', { className: 'hud-hint' });
+  private readonly potions = h('p', { className: 'hud-potions' });
+  private readonly objective = h('p', { className: 'hud-objective' });
+  private readonly prompt = h('p', { className: 'hud-prompt' });
+  private readonly message = h('p', {
+    className: 'hud-message',
+    attrs: { role: 'status', 'aria-live': 'polite' },
+  });
+  private messageTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastPrompt = '';
   private icons: ReturnType<typeof heartIcon>[] = [];
   private last = '';
   private bannerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -74,12 +87,17 @@ export class Hud {
     const top = h('div', { className: 'hud-top' }, [
       h('div', { className: 'hud-life' }, [this.hearts, this.heartsLabel]),
       this.sparks,
+      this.potions,
       this.dodge,
     ]);
-    const side = h('div', { className: 'hud-side' }, [this.wave, this.dummyLabel]);
-    root.replaceChildren(top, side, this.banner, this.muted, this.hint);
+    const side = h('div', { className: 'hud-side' }, [this.objective, this.wave, this.dummyLabel]);
+    root.replaceChildren(top, side, this.banner, this.message, this.prompt, this.muted, this.hint);
     this.muted.hidden = true;
     this.banner.hidden = true;
+    this.message.hidden = true;
+    this.prompt.hidden = true;
+    this.wave.hidden = true;
+    this.objective.hidden = true;
   }
 
   setVisible(visible: boolean): void {
@@ -87,10 +105,17 @@ export class Hud {
   }
 
   /** Actualiza vida, chispas, oleada y esquiva. Solo toca el DOM si algo cambió. */
-  update(s: HudSnapshot): void {
+  update(s: HudSnapshot, progress: Progress): void {
     const t = TEXTS.hud;
     const nextIn = s.nextWaveIn === null ? -1 : Math.ceil(s.nextWaveIn);
-    const key = `${s.quarters}/${s.maxQuarters}|${s.sparks}|${s.wave}|${nextIn}|${s.enemies}|${s.dodgeReady}`;
+    const promptLabel = s.prompt ? `${TEXTS.prompts.key}: ${promptText(s.prompt, progress)}` : '';
+    if (promptLabel !== this.lastPrompt) {
+      this.lastPrompt = promptLabel;
+      this.prompt.textContent = promptLabel;
+      this.prompt.hidden = promptLabel === '';
+    }
+    this.dummyLabel.hidden = !s.dummyNear;
+    const key = `${s.quarters}/${s.maxQuarters}|${s.sparks}|${s.potions}|${s.wave}|${nextIn}|${s.enemies}|${s.dodgeReady}|${s.objective}`;
     if (key === this.last) return;
     this.last = key;
     const count = Math.ceil(s.maxQuarters / 4);
@@ -101,10 +126,16 @@ export class Hud {
     this.icons.forEach((icon, i) => icon.setFill((s.quarters - i * 4) / 4));
     this.heartsLabel.textContent = `${t.hearts}: ${heartsText(s.quarters)} ${t.of} ${count}`;
     this.sparks.textContent = `✦ ${t.sparks}: ${s.sparks}`;
-    this.wave.textContent =
-      s.nextWaveIn === null
-        ? `${t.wave} ${s.wave} · ${t.enemies}: ${s.enemies}`
-        : `${t.nextWave} ${nextIn} ${t.seconds}`;
+    this.potions.textContent = `⚗ ${t.potions}: ${s.potions}`;
+    this.objective.hidden = s.objective === null;
+    if (s.objective) this.objective.textContent = `${t.objective}: ${TEXTS.objectives[s.objective]}`;
+    this.wave.hidden = s.wave === null;
+    if (s.wave !== null) {
+      this.wave.textContent =
+        s.nextWaveIn === null
+          ? `${t.wave} ${s.wave} · ${t.enemies}: ${s.enemies}`
+          : `${t.nextWave} ${nextIn} ${t.seconds}`;
+    }
     this.dodge.textContent = s.dodgeReady ? `● ${t.dodgeReady}` : `○ ${t.dodgeWait}`;
     this.dodge.classList.toggle('is-waiting', !s.dodgeReady);
   }
@@ -117,6 +148,16 @@ export class Hud {
     this.bannerTimer = setTimeout(() => {
       this.banner.hidden = true;
     }, BANNER_MS);
+  }
+
+  /** Aviso de lo que acaba de pasar (cofres, puertas, puzzles). Se ve también sin sonido. */
+  showMessage(text: string): void {
+    this.message.textContent = text;
+    this.message.hidden = false;
+    if (this.messageTimer) clearTimeout(this.messageTimer);
+    this.messageTimer = setTimeout(() => {
+      this.message.hidden = true;
+    }, MESSAGE_MS);
   }
 
   setDummy(dummy: DummyState): void {

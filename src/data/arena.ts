@@ -7,7 +7,8 @@ export interface BlockData {
   readonly halfX: number;
   readonly halfZ: number;
   readonly height: number;
-  readonly kind: 'wall' | 'pillar' | 'ruin';
+  /** `bound` es un límite invisible; `tree` y `prop` son árboles y objetos. */
+  readonly kind: 'wall' | 'pillar' | 'ruin' | 'bound' | 'tree' | 'prop';
 }
 
 export interface Point2 {
