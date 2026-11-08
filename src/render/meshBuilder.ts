@@ -23,6 +23,22 @@ export interface PieceTransform {
 }
 
 /**
+ * Prisma de un tejado a dos aguas. El orden de los índices sigue el de las cajas del motor:
+ * al revés, las caras exteriores no se dibujarían y se vería el interior del tejado.
+ */
+export function roofVertexData(w: number, h: number, d: number): VertexData {
+  const x = w / 2;
+  const z = d / 2;
+  const data = new VertexData();
+  data.positions = [-x, 0, -z, x, 0, -z, x, h, 0, -x, h, 0, -x, 0, z, x, 0, z];
+  data.indices = [0, 1, 2, 0, 2, 3, 4, 2, 5, 4, 3, 2, 0, 3, 4, 1, 5, 2, 0, 5, 1, 0, 4, 5];
+  const normals: number[] = [];
+  VertexData.ComputeNormals(data.positions, data.indices, normals);
+  data.normals = normals;
+  return data;
+}
+
+/**
  * Junta muchas piezas simples con color por vértice en una sola malla (una llamada de dibujo).
  * Las construcciones de las zonas se hacen así: caben decenas de piezas sin coste por fotograma.
  */
@@ -81,15 +97,7 @@ export class MeshBuilder {
 
   /** Tejado a dos aguas: prisma de ancho `w` y fondo `d` con la cumbrera a lo largo de X. */
   roof(w: number, h: number, d: number, color: string, t: PieceTransform): void {
-    const x = w / 2;
-    const z = d / 2;
-    const data = new VertexData();
-    data.positions = [-x, 0, -z, x, 0, -z, x, h, 0, -x, h, 0, -x, 0, z, x, 0, z];
-    data.indices = [0, 2, 1, 0, 3, 2, 4, 5, 2, 4, 2, 3, 0, 4, 3, 1, 2, 5, 0, 1, 5, 0, 5, 4];
-    const normals: number[] = [];
-    VertexData.ComputeNormals(data.positions, data.indices, normals);
-    data.normals = normals;
-    this.add(data, color, t);
+    this.add(roofVertexData(w, h, d), color, t);
   }
 
   /** Símbolo de un interruptor: se distinguen por la forma, no solo por el color. */

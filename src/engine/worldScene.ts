@@ -79,7 +79,8 @@ export function createWorldScene(
   sun.shadowMaxZ = 120;
 
   const shadows = new ShadowGenerator(quality.shadowMapSize, sun);
-  shadows.bias = 0.0015;
+  // Con menos margen, las paredes de cara al sol se sombrean a sí mismas y salen con rayas finas.
+  shadows.bias = 0.004;
   shadows.normalBias = 0.02;
   shadows.darkness = 0.35;
   applyShadowFilter(shadows, quality);
