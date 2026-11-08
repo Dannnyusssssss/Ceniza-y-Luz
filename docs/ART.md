@@ -1,6 +1,6 @@
 # Modelos 3D
 
-Los personajes, el muñeco de práctica y la Hoja de Luz se generan con scripts de Python que ejecuta Blender en segundo plano. El entorno (terreno, árboles, rocas, cristales) se crea por código dentro del juego.
+Los personajes, los enemigos, el muñeco de práctica y la Hoja de Luz se generan con scripts de Python que ejecuta Blender en segundo plano. El entorno (terreno, árboles, rocas, cristales) se crea por código dentro del juego.
 
 ## Requisitos
 
@@ -9,12 +9,12 @@ Los personajes, el muñeco de práctica y la Hoja de Luz se generan con scripts 
 
 ## Comandos
 
-| Comando                            | Qué hace                                                               |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| `npm run art`                      | Genera o exporta todos los modelos.                                    |
-| `npm run art -- alba ciro`         | Solo los modelos indicados (`blade`, `dummy`, `alba`, `ciro`).         |
-| `npm run art -- --regenerate alba` | Vuelve a generar un modelo aunque su `.blend` se haya retocado a mano. |
-| `npm run art -- --no-previews`     | Sin imágenes de vista previa.                                          |
+| Comando                            | Qué hace                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `npm run art`                      | Genera o exporta todos los modelos.                                                                          |
+| `npm run art -- alba ciro`         | Solo los modelos indicados (`blade`, `dummy`, `alba`, `ciro`, `brumilla`, `acechador`, `coloso`, `tirador`). |
+| `npm run art -- --regenerate alba` | Vuelve a generar un modelo aunque su `.blend` se haya retocado a mano.                                       |
+| `npm run art -- --no-previews`     | Sin imágenes de vista previa.                                                                                |
 
 ## Qué produce
 
@@ -24,7 +24,9 @@ Los personajes, el muñeco de práctica y la Hoja de Luz se generan con scripts 
 - `src/data/generated/models.ts`: clips de animación (fotogramas y segundos), huesos, triángulos y texturas de cada modelo.
 - `art/previews/`: imágenes de frente, tres cuartos, lado, espalda y primer plano de la cara (no se versionan).
 
-Los colores y los tiempos de los golpes y de la esquiva se leen de `src/data/` (`characters.ts`, `balance.ts`, `palettes.ts`), así el modelo y la lógica del juego no se desincronizan. Un test comprueba que la duración de cada golpe coincide con `balance.ts`.
+Los colores y los tiempos de los golpes y de la esquiva se leen de `src/data/` (`characters.ts`, `enemies.ts`, `balance.ts`, `palettes.ts`), así el modelo y la lógica del juego no se desincronizan. Un test comprueba que la duración de cada golpe coincide con `balance.ts`.
+
+Cada enemigo tiene los clips `idle`, `move`, `windup`, `attack`, `recover` y `hurt`; los de ataque duran lo que indica `enemies.ts`.
 
 ## Retoques a mano
 
@@ -32,16 +34,17 @@ Los colores y los tiempos de los golpes y de la esquiva se leen de `src/data/` (
 
 ## Estructura de los scripts
 
-| Archivo                            | Contenido                                                                                               |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `art/build.mjs`                    | Lanza Blender por cada modelo, guarda las huellas y escribe el manifiesto.                              |
-| `art/blender/build_model.py`       | Punto de entrada dentro de Blender: genera o abre, renderiza vistas previas y exporta.                  |
-| `art/blender/lib/common.py`        | Escena, mallas básicas, color por vértice, materiales, contorno, exportación y vistas previas.          |
-| `art/blender/lib/sculpt.py`        | Formas orgánicas con metaballs, cortes rectos, secciones del cuerpo, mechones y transferencia de pesos. |
-| `art/blender/lib/facepaint.py`     | Dibujo de la textura de la cara (ojos, cejas, nariz y boca).                                            |
-| `art/blender/lib/rig.py`           | Esqueleto, posturas y clips de animación.                                                               |
-| `art/blender/characters/twins*.py` | Alba y Ciro: cuerpo, cabeza y pelo, ropa, animaciones y ensamblado.                                     |
-| `art/blender/props/`               | La Hoja de Luz y el muñeco de práctica.                                                                 |
+| Archivo                            | Contenido                                                                                                 |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `art/build.mjs`                    | Lanza Blender por cada modelo, guarda las huellas y escribe el manifiesto.                                |
+| `art/blender/build_model.py`       | Punto de entrada dentro de Blender: genera o abre, renderiza vistas previas y exporta.                    |
+| `art/blender/lib/common.py`        | Escena, mallas básicas, color por vértice, materiales, contorno, exportación y vistas previas.            |
+| `art/blender/lib/sculpt.py`        | Formas orgánicas con metaballs, cortes rectos, secciones del cuerpo, mechones y transferencia de pesos.   |
+| `art/blender/lib/facepaint.py`     | Dibujo de la textura de la cara (ojos, cejas, nariz y boca).                                              |
+| `art/blender/lib/rig.py`           | Esqueleto, posturas y clips de animación.                                                                 |
+| `art/blender/characters/twins*.py` | Alba y Ciro: cuerpo, cabeza y pelo, ropa, animaciones y ensamblado.                                       |
+| `art/blender/enemies/`             | Brumilla, Acechador, Coloso de Bruma y Tirador de Ceniza; `mist.py` reúne su paleta y sus piezas comunes. |
+| `art/blender/props/`               | La Hoja de Luz y el muñeco de práctica.                                                                   |
 
 ## Convenciones
 

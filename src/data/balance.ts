@@ -117,3 +117,37 @@ export const FEEDBACK_BALANCE = {
   /** Pausa breve al conectar un golpe (sensación de impacto), en segundos. */
   hitStop: 0.05,
 } as const;
+
+/**
+ * Vida del jugador. Se cuenta en cuartos de corazón (4 cuartos = 1 corazón), así los fragmentos
+ * de corazón y el daño reducido a la mitad salen siempre en números enteros.
+ */
+export const HEALTH_BALANCE = {
+  /** Corazones al empezar. */
+  startHearts: 4,
+  quartersPerHeart: 4,
+  /** Invulnerabilidad tras recibir un golpe (s): da tiempo a reaccionar y evita golpes encadenados. */
+  invulnerableAfterHit: 1,
+  /** Empuje al recibir un golpe: velocidad inicial (m/s) y duración (s). */
+  knockbackSpeed: 7,
+  knockbackTime: 0.22,
+  /** Con "Daño recibido: reducido", el daño se multiplica por esto (redondeado hacia arriba, mínimo 1). */
+  reducedDamageFactor: 0.5,
+  /** Espera entre caer y mostrar "Reintentar" (s), para que se vea la animación. */
+  deathScreenDelay: 1.2,
+} as const;
+
+/** Chispas: la moneda que sueltan los enemigos. */
+export const SPARK_BALANCE = {
+  /** A esta distancia las chispas vuelan hacia el jugador. */
+  magnetRadius: 2.6,
+  magnetSpeed: 9,
+  /** A esta distancia se recogen. */
+  pickupRadius: 0.6,
+  /** Tiempo antes de que una chispa recién soltada empiece a atraerse (para que se vea caer). */
+  settleTime: 0.35,
+  /** Las chispas desaparecen si no se recogen en este tiempo. */
+  lifetime: 25,
+  /** Velocidad al salir despedidas del enemigo. */
+  burstSpeed: 2.5,
+} as const;

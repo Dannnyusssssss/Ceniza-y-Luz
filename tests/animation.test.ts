@@ -22,6 +22,8 @@ const TABLE: ClipTable = {
   attack1: { frames: 26, seconds: 26 / 60 },
   attack2: { frames: 26, seconds: 26 / 60 },
   attack3: { frames: 38, seconds: 38 / 60 },
+  hurt: { frames: 24, seconds: 24 / 60 },
+  fall: { frames: 60, seconds: 1 },
 };
 
 const totalWeight = (samples: readonly ClipSample[]): number => samples.reduce((sum, s) => sum + s.weight, 0);
@@ -107,5 +109,19 @@ describe('ClipMixer', () => {
     expect(totalWeight(fading)).toBeCloseTo(1);
     const done = mixer.update({ speed: 0, dodge: 0, attack: null }, ACTION_FADE_SECONDS);
     expect(done.map((s) => s.clip)).toEqual(['idle']);
+  });
+
+  it('al recibir un golpe muestra el retroceso; al caer, la caída hasta el último fotograma', () => {
+    const mixer = new ClipMixer(TABLE);
+    expect(mixer.update({ speed: 0, dodge: 0, attack: null, hurt: 0.1 }, 0.016)[0]).toMatchObject({
+      clip: 'hurt',
+      frame: 6,
+    });
+    // Pasado el clip de retroceso, vuelve al movimiento normal (con el fundido).
+    const after = mixer.update({ speed: 0, dodge: 0, attack: null, hurt: 5 }, 1);
+    expect(after.map((s) => s.clip)).toEqual(['idle']);
+    expect(mixer.update({ speed: 3, dodge: 0, attack: null, dead: 9 }, 0.016)).toEqual([
+      { clip: 'fall', frame: 60, weight: 1 },
+    ]);
   });
 });

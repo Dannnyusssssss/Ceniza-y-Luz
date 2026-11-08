@@ -24,6 +24,10 @@ export interface MixInput {
   readonly dodge: number;
   /** Golpe en curso: paso del combo y segundos desde que empezó. */
   readonly attack: { readonly step: number; readonly time: number } | null;
+  /** Segundos desde que recibió un golpe (null si no hay que mostrar el retroceso). */
+  readonly hurt?: number | null;
+  /** Segundos desde que cayó (null si está vivo). */
+  readonly dead?: number | null;
 }
 
 /** Un clip a mostrar: en qué fotograma y con qué peso (los pesos suman 1). */
@@ -70,10 +74,14 @@ export class ClipMixer {
   }
 
   private action(input: MixInput): { clip: string; frame: number } | null {
+    if (input.dead !== undefined && input.dead !== null) return this.frameOf('fall', input.dead);
     if (input.dodge > 0) return this.frameOf('dodge', clamp(input.dodge, 0, 1) * this.seconds('dodge'));
     if (input.attack) {
       const clip = ATTACK_CLIPS[input.attack.step];
       if (clip) return this.frameOf(clip, input.attack.time);
+    }
+    if (input.hurt !== undefined && input.hurt !== null && input.hurt < this.seconds('hurt')) {
+      return this.frameOf('hurt', input.hurt);
     }
     return null;
   }

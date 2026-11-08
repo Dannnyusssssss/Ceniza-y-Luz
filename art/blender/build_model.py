@@ -15,12 +15,21 @@ import sys
 import bpy
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-for sub in ("lib", "props", "characters"):
+for sub in ("lib", "props", "characters", "enemies"):
     sys.path.insert(0, os.path.join(HERE, sub))
 
 import common  # noqa: E402
 
-MODULES = {"blade": "blade", "dummy": "dummy", "alba": "twins", "ciro": "twins"}
+MODULES = {
+    "blade": "blade",
+    "dummy": "dummy",
+    "alba": "twins",
+    "ciro": "twins",
+    "brumilla": "brumilla",
+    "acechador": "acechador",
+    "coloso": "coloso",
+    "tirador": "tirador",
+}
 
 
 def read_manifest_from_scene(model):

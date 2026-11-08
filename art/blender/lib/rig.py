@@ -92,11 +92,24 @@ def _global_rotation(rotations):
 
 
 def apply_pose(armature, pose):
-    """Aplica una postura. `pose` = {hueso: [('x', grados), ...]} y opcionalmente {'@loc:hueso': (x, y, z)}."""
+    """Aplica una postura. `pose` = {hueso: [('x', grados), ...]} y opcionalmente
+    {'@loc:hueso': (x, y, z)} (desplazamiento) y {'@scale:hueso': (x, y, z)} (escala), ambos en ejes globales."""
     for pb in armature.pose.bones:
         pb.rotation_quaternion = Quaternion()
         pb.location = Vector((0, 0, 0))
+        pb.scale = Vector((1, 1, 1))
     for key, value in pose.items():
+        if key.startswith("@scale:"):
+            # Escala en ejes globales (x, y, z) llevada a los ejes del hueso (aplastar y estirar).
+            pb = armature.pose.bones[key[7:]]
+            rest = pb.bone.matrix_local.to_3x3()
+            gx, gy, gz = value
+            m = rest.inverted()
+            sx = sum(abs(m[0][k]) * (gx, gy, gz)[k] for k in range(3))
+            sy = sum(abs(m[1][k]) * (gx, gy, gz)[k] for k in range(3))
+            sz = sum(abs(m[2][k]) * (gx, gy, gz)[k] for k in range(3))
+            pb.scale = Vector((sx, sy, sz))
+            continue
         if key.startswith("@loc:"):
             pb = armature.pose.bones[key[5:]]
             # El desplazamiento se da en ejes globales y se pasa al espacio local del hueso.
@@ -120,6 +133,7 @@ def key_pose(armature, frame):
             continue
         pb.keyframe_insert("rotation_quaternion", frame=frame)
         pb.keyframe_insert("location", frame=frame)
+        pb.keyframe_insert("scale", frame=frame)
 
 
 def make_clip(armature, name, keys, frames, loop=False):

@@ -1,6 +1,7 @@
 import type { Scene } from '@babylonjs/core/scene';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import { Quaternion } from '@babylonjs/core/Maths/math.vector';
+import { Color3 } from '@babylonjs/core/Maths/math.color';
 import type { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
 import type { CharacterData } from '../data/characters';
 import { MODELS } from '../data/generated/models';
@@ -9,6 +10,8 @@ import { CharacterAnimator, type AnimatorInput } from './characterAnimator';
 import type { ClipTable } from './clipMix';
 import { instantiateModel, type ModelInstance } from './modelMaterials';
 import type { ToonMaterials } from './toon';
+
+const HURT_COLOR = Color3.FromHexString('#ff4d5e');
 
 /** Hueso que sujeta la Hoja de Luz. */
 export const BLADE_BONE = 'hand.R';
@@ -45,6 +48,7 @@ export class CharacterView {
       faceTexture: faceTexture ? MODELS_URL + faceTexture : undefined,
     });
     this.model.root.parent = this.root;
+    for (const mesh of this.model.meshes) mesh.overlayColor = HURT_COLOR;
     this.root.scaling.setAll(data.heightScale);
 
     this.blade = instantiateModel(bladeModel, materials, shadows);
@@ -64,6 +68,14 @@ export class CharacterView {
 
   update(input: AnimatorInput, dt: number): void {
     this.animator.update(input, dt);
+  }
+
+  /** Tinte rojo suave al recibir un golpe (0 = sin tinte). Quien llama respeta "Reducir parpadeo". */
+  setHurtTint(amount: number): void {
+    for (const mesh of this.model.meshes) {
+      mesh.renderOverlay = amount > 0;
+      mesh.overlayAlpha = 0.45 * amount;
+    }
   }
 
   dispose(): void {

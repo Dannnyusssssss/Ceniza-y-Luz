@@ -6,11 +6,12 @@ import { TEXT_SIZE_SCALE, type Settings } from '../data/settings';
 import type { DebugOverlay } from './debug';
 import type { Hud } from './hud';
 import { Menus } from './menus';
+import { TEXTS } from '../data/texts';
 
 /** Tiempo tras una pausa en el que se ignora otra pulsación de pausa (evita que Esc pause y reanude a la vez). */
 const PAUSE_DEBOUNCE_MS = 300;
 
-type AppState = 'start' | 'select' | 'playing' | 'paused';
+type AppState = 'start' | 'select' | 'playing' | 'paused' | 'dead';
 
 /**
  * Coordina pantallas, partida y entrada: inicio → elección → juego ⇄ pausa.
@@ -42,8 +43,13 @@ export class App {
       onResume: () => this.resume(),
       onToStart: () => this.toStart(),
       onClearData: () => settings.reset(),
+      onRetry: () => this.retry(),
     });
     session.onDummyChanged = (dummy) => hud.setDummy(dummy);
+    session.onHud = (snapshot) => hud.update(snapshot);
+    session.onBanner = (kind, wave) =>
+      hud.showBanner(kind === 'waveStarted' ? TEXTS.hud.waveStarted(wave) : TEXTS.hud.waveCleared(wave));
+    session.onRetryReady = () => this.die();
     hud.setDummy(session.dummy);
     settings.onChange((s) => this.applyUiSettings(s));
     this.applyUiSettings(settings.value);
@@ -80,6 +86,7 @@ export class App {
 
   private handlePauseKey(): void {
     if (performance.now() - this.lastPauseAt < PAUSE_DEBOUNCE_MS) return;
+    if (this.state === 'dead') return;
     if (this.state === 'playing') this.pause();
     else this.menus.handleEscape();
   }
@@ -105,8 +112,26 @@ export class App {
     this.enterPlaying();
   }
 
+  /** El jugador cayó: se muestra "Reintentar" (el mundo queda quieto detrás). */
+  private die(): void {
+    this.state = 'dead';
+    this.session.playing = false;
+    this.input.gameplayActive = false;
+    this.input.state.clear();
+    this.input.releaseLock();
+    this.hud.setVisible(false);
+    this.menus.showDeath();
+  }
+
+  private retry(): void {
+    this.session.retry();
+    this.enterPlaying();
+  }
+
   /** Pasa a jugar. Se llama siempre desde un clic o una tecla, así se puede pedir la captura del puntero. */
   private enterPlaying(): void {
+    // El audio solo puede empezar tras una acción del jugador; esta lo es.
+    this.session.sfx.unlock();
     this.state = 'playing';
     this.menus.hide();
     this.hud.setVisible(true);

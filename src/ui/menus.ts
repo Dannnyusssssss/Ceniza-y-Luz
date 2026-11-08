@@ -12,6 +12,7 @@ export interface MenuActions {
   onResume(): void;
   onToStart(): void;
   onClearData(): void;
+  onRetry(): void;
 }
 
 function controlsList(): HTMLElement {
@@ -24,7 +25,7 @@ function controlsList(): HTMLElement {
 
 /** Pantallas del juego en el DOM: inicio, elección de personaje, pausa y ajustes. */
 export class Menus {
-  private current: 'start' | 'select' | 'pause' | 'settings' | null = null;
+  private current: 'start' | 'select' | 'pause' | 'settings' | 'death' | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -120,6 +121,20 @@ export class Menus {
         h('details', {}, [h('summary', { text: t.controls }), controlsList()]),
         button(t.toStart, () => this.actions.onToStart(), 'btn btn-secondary'),
         h('p', { className: 'hint', text: t.pointerHint }),
+      ]),
+    );
+  }
+
+  /** Pantalla al caer: "Reintentar" tiene el foco para seguir con el teclado. */
+  showDeath(): void {
+    const t = TEXTS.death;
+    this.mount(
+      'death',
+      h('section', { className: 'panel', attrs: { 'aria-labelledby': 'death-title', role: 'alertdialog' } }, [
+        h('h2', { text: t.title, attrs: { id: 'death-title' } }),
+        h('p', { text: t.text }),
+        button(t.retry, () => this.actions.onRetry(), 'btn btn-primary'),
+        button(t.toStart, () => this.actions.onToStart(), 'btn btn-secondary'),
       ]),
     );
   }

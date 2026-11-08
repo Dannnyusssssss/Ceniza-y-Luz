@@ -24,7 +24,8 @@ export const ARENA = {
   playerSpawn: { x: 0, z: -9 } as Point2,
   /** Hacia dónde mira el jugador al empezar (radianes, 0 = +z). */
   playerSpawnYaw: 0,
-  dummy: { x: 0, z: 2 } as Point2,
+  /** El muñeco de práctica queda en un rincón, fuera del paso de las oleadas. */
+  dummy: { x: -12, z: -10 } as Point2,
   blocks: [
     // Muros perimetrales.
     { x: 0, z: HALF, halfX: HALF + WALL, halfZ: WALL, height: WALL_HEIGHT, kind: 'wall' },

@@ -154,4 +154,173 @@ export const MODELS = {
     triangles: 3740,
     textures: [],
   },
+  brumilla: {
+    model: 'brumilla',
+    clips: {
+      idle: {
+        frames: 90,
+        seconds: 1.5,
+      },
+      move: {
+        frames: 36,
+        seconds: 0.6,
+      },
+      windup: {
+        frames: 33,
+        seconds: 0.55,
+      },
+      attack: {
+        frames: 18,
+        seconds: 0.3,
+      },
+      recover: {
+        frames: 48,
+        seconds: 0.8,
+      },
+      hurt: {
+        frames: 21,
+        seconds: 0.35,
+      },
+    },
+    bones: ['root', 'body', 'tuft', 'foot.L', 'foot.R'],
+    triangles: 5936,
+    textures: [],
+  },
+  acechador: {
+    model: 'acechador',
+    clips: {
+      idle: {
+        frames: 100,
+        seconds: 1.6666666666666667,
+      },
+      move: {
+        frames: 26,
+        seconds: 0.43333333333333335,
+      },
+      windup: {
+        frames: 26,
+        seconds: 0.43333333333333335,
+      },
+      attack: {
+        frames: 20,
+        seconds: 0.3333333333333333,
+      },
+      recover: {
+        frames: 45,
+        seconds: 0.75,
+      },
+      hurt: {
+        frames: 21,
+        seconds: 0.35,
+      },
+    },
+    bones: [
+      'root',
+      'hips',
+      'chest',
+      'neck',
+      'head',
+      'legF.L',
+      'pawF.L',
+      'legF.R',
+      'pawF.R',
+      'tail.1',
+      'tail.2',
+      'legB.L',
+      'pawB.L',
+      'legB.R',
+      'pawB.R',
+    ],
+    triangles: 8072,
+    textures: [],
+  },
+  coloso: {
+    model: 'coloso',
+    clips: {
+      idle: {
+        frames: 120,
+        seconds: 2,
+      },
+      move: {
+        frames: 80,
+        seconds: 1.3333333333333333,
+      },
+      windup: {
+        frames: 63,
+        seconds: 1.05,
+      },
+      attack: {
+        frames: 11,
+        seconds: 0.18333333333333332,
+      },
+      recover: {
+        frames: 84,
+        seconds: 1.4,
+      },
+      hurt: {
+        frames: 24,
+        seconds: 0.4,
+      },
+    },
+    bones: [
+      'root',
+      'hips',
+      'chest',
+      'head',
+      'upperarm.L',
+      'forearm.L',
+      'upperarm.R',
+      'forearm.R',
+      'thigh.L',
+      'shin.L',
+      'thigh.R',
+      'shin.R',
+    ],
+    triangles: 8320,
+    textures: [],
+  },
+  tirador: {
+    model: 'tirador',
+    clips: {
+      idle: {
+        frames: 120,
+        seconds: 2,
+      },
+      move: {
+        frames: 70,
+        seconds: 1.1666666666666667,
+      },
+      windup: {
+        frames: 48,
+        seconds: 0.8,
+      },
+      attack: {
+        frames: 6,
+        seconds: 0.1,
+      },
+      recover: {
+        frames: 90,
+        seconds: 1.5,
+      },
+      hurt: {
+        frames: 21,
+        seconds: 0.35,
+      },
+    },
+    bones: [
+      'root',
+      'body',
+      'chest',
+      'head',
+      'orb',
+      'arm.L',
+      'hand.L',
+      'arm.R',
+      'hand.R',
+      'cloak.1',
+      'cloak.2',
+    ],
+    triangles: 6816,
+    textures: [],
+  },
 } as const;

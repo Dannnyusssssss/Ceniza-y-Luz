@@ -323,20 +323,101 @@ details summary {
 }
 
 .hud p {
-  position: absolute;
   margin: 0;
   padding: 0.4rem 0.75rem;
   border-radius: 0.4rem;
   background: rgba(14, 10, 20, 0.78);
 }
 
-.hud-dummy {
+.hud-top {
+  position: absolute;
   top: 1rem;
   left: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.hud-life {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.4rem;
+  background: rgba(14, 10, 20, 0.78);
+}
+
+.hud-hearts {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.heart {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.heart-empty {
+  fill: #3a2e48;
+  stroke: #f6f1e7;
+  stroke-width: 1.2;
+}
+
+.heart-full {
+  fill: #ff5a6e;
+}
+
+.hud-hearts-label {
   font-weight: 600;
 }
 
+.hud-sparks {
+  font-weight: 600;
+  color: #ffd86b;
+}
+
+.hud-dodge.is-waiting {
+  color: var(--muted);
+}
+
+.hud-side {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  margin-top: 2.6rem;
+}
+
+.hud-wave {
+  font-weight: 600;
+}
+
+.hud-dummy {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.hud-banner {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.hud-banner[hidden] {
+  display: none;
+}
+
 .hud-badge {
+  position: absolute;
   top: 1rem;
   right: 1rem;
 }
@@ -346,6 +427,7 @@ details summary {
 }
 
 .hud-hint {
+  position: absolute;
   bottom: 1rem;
   left: 50%;
   transform: translateX(-50%);
