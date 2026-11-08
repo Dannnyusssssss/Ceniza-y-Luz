@@ -1,0 +1,32 @@
+{
+  "name": "ceniza-y-luz",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aventura de acción 3D en tercera persona con un mundo pequeño por explorar.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src tests vite.config.ts eslint.config.js --max-warnings 0 && prettier --check \"src/**/*.{ts,css}\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.{json,ts,js,html}\"",
+    "format": "prettier --write \"src/**/*.{ts,css}\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.{json,ts,js,html}\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@babylonjs/core": "9.35.0",
+    "@babylonjs/materials": "9.35.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.6.6",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vite": "8.3.6",
+    "vitest": "5.1.0"
+  }
+}

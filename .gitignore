@@ -1,0 +1,17 @@
+# Dependencias
+node_modules/
+
+# Builds y cobertura
+dist/
+coverage/
+*.tsbuildinfo
+
+# Entorno y claves
+.env*
+*.pem
+*.key
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+*.log

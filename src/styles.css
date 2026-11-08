@@ -1,0 +1,390 @@
+:root {
+  --ui-scale: 1;
+  --bg: #0d0b12;
+  --panel: rgba(20, 15, 28, 0.93);
+  --text: #f6f1e7;
+  --muted: #d8cfe0;
+  --accent: #f2c14e;
+  --accent-text: #1a1222;
+  --danger: #ff9b8a;
+  --focus: #8fe3ff;
+  color-scheme: dark;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: calc(16px * var(--ui-scale));
+  background: var(--bg);
+  color: var(--text);
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+main {
+  position: relative;
+  height: 100%;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+
+#game:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  background: var(--text);
+  color: var(--bg);
+  padding: 0.5rem 1rem;
+}
+
+/* Pantallas */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  padding: 1rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+  background: rgba(8, 6, 12, 0.45);
+}
+
+.screen[hidden] {
+  display: none;
+}
+
+.screen-select {
+  background: linear-gradient(to right, rgba(8, 6, 12, 0.7), rgba(8, 6, 12, 0) 50%);
+}
+
+.panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(30rem, 100%);
+  /* margin auto centra sin recortar el panel si es más alto que la pantalla. */
+  margin: auto;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background: var(--panel);
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.5);
+}
+
+.panel-wide {
+  width: min(40rem, 100%);
+}
+
+.panel-side {
+  width: min(24rem, 100%);
+  margin: auto auto auto 0;
+}
+
+.panel h2 {
+  margin: 0.25rem 0 0;
+  font-size: 1.25rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.subtitle,
+.hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: rgba(242, 193, 78, 0.08);
+}
+
+.notice h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.notice p {
+  margin: 0;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.controls dt {
+  font-weight: 700;
+}
+
+.controls dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.btn {
+  min-height: 44px;
+  padding: 0.6rem 1.2rem;
+  border: 2px solid var(--muted);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.btn-primary:hover {
+  background: #f7d27a;
+}
+
+.btn-secondary {
+  border-color: rgba(216, 207, 224, 0.6);
+}
+
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+.card:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 44px;
+  padding: 1rem;
+  border: 2px solid rgba(216, 207, 224, 0.5);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: rgba(242, 193, 78, 0.12);
+}
+
+.card-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.card-tagline {
+  color: var(--muted);
+}
+
+details summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Ajustes */
+.field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+}
+
+.field label {
+  grid-column: 1 / -1;
+}
+
+.field input[type='range'] {
+  min-height: 44px;
+  accent-color: var(--accent);
+}
+
+.field select {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border-radius: 0.4rem;
+  font: inherit;
+  background: #241c30;
+  color: var(--text);
+  border: 2px solid var(--muted);
+}
+
+.field-check {
+  grid-template-columns: auto 1fr;
+  min-height: 44px;
+}
+
+.field-check label {
+  grid-column: auto;
+  cursor: pointer;
+}
+
+.field-check input {
+  width: 1.4rem;
+  height: 1.4rem;
+  accent-color: var(--accent);
+}
+
+.clear-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.clear-area p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.status {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--accent);
+}
+
+/* HUD */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud[hidden] {
+  display: none;
+}
+
+.hud p {
+  position: absolute;
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.4rem;
+  background: rgba(14, 10, 20, 0.78);
+}
+
+.hud-dummy {
+  top: 1rem;
+  left: 1rem;
+  font-weight: 600;
+}
+
+.hud-badge {
+  top: 1rem;
+  right: 1rem;
+}
+
+.hud-badge[hidden] {
+  display: none;
+}
+
+.hud-hint {
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+/* Depuración */
+.debug {
+  position: absolute;
+  top: 3.5rem;
+  left: 1rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.75);
+  color: #b8f5c8;
+  font:
+    0.8rem/1.4 ui-monospace,
+    Consolas,
+    monospace;
+  pointer-events: none;
+}
+
+.debug[hidden] {
+  display: none;
+}
+
+#fatal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: var(--bg);
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+#fatal[hidden] {
+  display: none;
+}

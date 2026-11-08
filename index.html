@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ceniza y Luz</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta
+      name="description"
+      content="Aventura de acción 3D en tercera persona con un mundo pequeño por explorar."
+    />
+    <meta property="og:title" content="Ceniza y Luz" />
+    <meta
+      property="og:description"
+      content="Aventura de acción 3D en tercera persona con un mundo pequeño por explorar."
+    />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <a class="skip-link" href="#game">Saltar al juego</a>
+    <main>
+      <h1 class="visually-hidden">Ceniza y Luz</h1>
+      <canvas id="game" tabindex="0" aria-label="Escena del juego"></canvas>
+      <div id="hud" class="hud" hidden></div>
+      <div id="menu" class="screen" hidden></div>
+    </main>
+    <pre id="debug" class="debug" aria-hidden="true" hidden></pre>
+    <div id="fatal" role="alert" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
