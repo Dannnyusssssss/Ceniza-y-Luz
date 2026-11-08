@@ -25,6 +25,20 @@ function showFatal(message: string): void {
   box.hidden = false;
 }
 
+/** Pantalla de carga: el porcentaje se anuncia en texto (no solo con la barra). */
+function showLoading(fraction: number): void {
+  const percent = Math.round(Math.min(Math.max(fraction, 0), 1) * 100);
+  const text = document.getElementById('loading-text');
+  const fill = document.getElementById('loading-fill');
+  if (text) text.textContent = TEXTS.loading.progress(percent);
+  if (fill) fill.style.width = `${percent}%`;
+}
+
+function hideLoading(): void {
+  const box = document.getElementById('loading');
+  if (box) box.hidden = true;
+}
+
 function hideFatal(): void {
   const box = document.getElementById('fatal');
   if (box) box.hidden = true;
@@ -60,11 +74,13 @@ function watchPixelRatio(onChange: () => void): void {
 
 async function start(): Promise<void> {
   document.title = META.title;
+  showLoading(0);
   const canvas = byId('game');
   if (!(canvas instanceof HTMLCanvasElement)) return;
 
   const created = await createEngine(canvas, DEFAULT_BACKEND, readBackendPreference(window.location.search));
   if (!created) {
+    hideLoading();
     showFatal(TEXTS.errors.noGraphics);
     return;
   }
@@ -82,7 +98,8 @@ async function start(): Promise<void> {
     onFocusLost: () => callbacks?.onFocusLost(),
     onSystemAction: (action) => callbacks?.onSystemAction(action),
   });
-  const session = new GameSession(engine, input, settings, 'alba');
+  const session = await GameSession.create(engine, input, settings, 'alba', showLoading);
+  hideLoading();
   const debug = new DebugOverlay(
     byId('debug'),
     engine,
@@ -108,4 +125,7 @@ async function start(): Promise<void> {
   watchPixelRatio(() => engine.resize());
 }
 
-start().catch(() => showFatal(TEXTS.errors.startFailed));
+start().catch(() => {
+  hideLoading();
+  showFatal(TEXTS.errors.startFailed);
+});

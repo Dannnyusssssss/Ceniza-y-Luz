@@ -15,3 +15,12 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+
+# Vistas previas de los modelos (se regeneran con npm run art)
+art/previews/
+
+# Copias de respaldo de Blender
+*.blend1
+
+# Caché de Python (scripts de Blender)
+__pycache__/

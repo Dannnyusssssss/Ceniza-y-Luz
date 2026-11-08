@@ -32,5 +32,10 @@ export default tseslint.config(
       'no-restricted-globals': ['error', 'document', 'window', 'localStorage', 'sessionStorage'],
     },
   },
+  {
+    // Scripts de construcción del arte: se ejecutan con Node.
+    files: ['art/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node } },
+  },
   prettier,
 );

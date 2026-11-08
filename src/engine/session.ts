@@ -26,12 +26,38 @@ import { createDummy, hitDummy, updateDummy, type DummyState } from '../game/dum
 import { FlashLimiter, flashIntensity, shakeOffset } from '../game/feedback';
 import { applyLook, createCameraRig, updateCameraPose, type CameraRig } from '../world/cameraRig';
 import { createArenaEnvironment } from '../render/environment';
-import { createCharacterModel, type CharacterRig } from '../render/characterModel';
-import { CharacterAnimator } from '../render/characterAnimation';
+import { CharacterView } from '../render/characterView';
 import { DummyView } from '../render/dummyModel';
 import { createWorldScene, applyShadowFilter, type WorldScene } from './worldScene';
 import { createPostProcess, applyPostProcessQuality } from './postProcess';
 import { ThirdPersonCamera } from './thirdPersonCamera';
+import { loadModel, type LoadedModel } from './models';
+
+/** Modelos de Blender que necesita una partida, ya cargados. */
+export interface SessionAssets {
+  readonly blade: LoadedModel;
+  readonly dummy: LoadedModel;
+  readonly characters: Readonly<Record<CharacterId, LoadedModel>>;
+}
+
+/** Carga todos los modelos de la partida a la vez. `onProgress` recibe la fracción cargada (0..1). */
+async function loadAssets(world: WorldScene, onProgress: (fraction: number) => void): Promise<SessionAssets> {
+  const total = 4;
+  let done = 0;
+  const load = async (file: string): Promise<LoadedModel> => {
+    const model = await loadModel(world.scene, file);
+    onProgress(++done / total);
+    return model;
+  };
+  onProgress(0);
+  const [blade, dummy, alba, ciro] = await Promise.all([
+    load('blade.glb'),
+    load('dummy.glb'),
+    load('alba.glb'),
+    load('ciro.glb'),
+  ]);
+  return { blade, dummy, characters: { alba, ciro } };
+}
 
 /** Inclinación de la cámara al mostrar al personaje en la pantalla de elección. */
 const SHOWCASE_PITCH = 0.1;
@@ -49,8 +75,7 @@ export class GameSession {
   readonly cameraRig: CameraRig;
   readonly combo: ComboState = createCombo();
   readonly dummy: DummyState = createDummy(ARENA.dummy.x, ARENA.dummy.z);
-  private rig: CharacterRig;
-  private animator: CharacterAnimator;
+  private character: CharacterView;
   private readonly dummyView: DummyView;
   private readonly flashLimiter = new FlashLimiter();
   /** Reloj de la lógica (segundos de juego, no de pared). */
@@ -65,29 +90,44 @@ export class GameSession {
   /** Avisa a la interfaz de que cambió la vida del muñeco. */
   onDummyChanged: (dummy: DummyState) => void = () => undefined;
 
-  constructor(
+  /** Crea la escena, carga los modelos y prepara la partida. */
+  static async create(
+    engine: AbstractEngine,
+    input: BrowserInput,
+    settings: SettingsStore,
+    characterId: CharacterId,
+    onProgress: (fraction: number) => void = () => undefined,
+  ): Promise<GameSession> {
+    const quality = QUALITY_PRESETS[settings.value.quality];
+    engine.setHardwareScalingLevel(quality.hardwareScaling);
+    const world = createWorldScene(engine, LUMBRE_PALETTE, quality);
+    try {
+      const assets = await loadAssets(world, onProgress);
+      return new GameSession(engine, input, settings, characterId, world, assets);
+    } catch (error) {
+      world.scene.dispose();
+      throw error;
+    }
+  }
+
+  private constructor(
     private readonly engine: AbstractEngine,
     private readonly input: BrowserInput,
     private readonly settings: SettingsStore,
     characterId: CharacterId,
+    world: WorldScene,
+    private readonly assets: SessionAssets,
   ) {
     const quality = QUALITY_PRESETS[settings.value.quality];
-    engine.setHardwareScalingLevel(quality.hardwareScaling);
-    this.world = createWorldScene(engine, LUMBRE_PALETTE, quality);
+    this.world = world;
     createArenaEnvironment(this.world.scene, LUMBRE_PALETTE, this.world.materials, this.world.shadows);
 
     this.player = createPlayer(ARENA.playerSpawn.x, ARENA.playerSpawn.z, ARENA.playerSpawnYaw);
     this.cameraRig = createCameraRig(ARENA.playerSpawnYaw);
     this.camera = new ThirdPersonCamera(this.world.scene, settings.value.fov);
     this.pipeline = createPostProcess(this.world.scene, this.camera.camera, quality);
-    this.rig = this.buildCharacter(characterId);
-    this.animator = new CharacterAnimator(this.rig);
-    this.dummyView = new DummyView(
-      this.world.scene,
-      this.world.materials,
-      this.world.shadows,
-      LUMBRE_PALETTE.outline,
-    );
+    this.character = this.buildCharacter(characterId);
+    this.dummyView = new DummyView(this.world.scene, assets.dummy, this.world.materials, this.world.shadows);
 
     settings.onChange((s) => {
       const q = QUALITY_PRESETS[s.quality];
@@ -108,9 +148,8 @@ export class GameSession {
 
   /** Cambia de personaje (pantalla de elección). */
   setCharacter(characterId: CharacterId): void {
-    this.rig.dispose();
-    this.rig = this.buildCharacter(characterId);
-    this.animator = new CharacterAnimator(this.rig);
+    this.character.dispose();
+    this.character = this.buildCharacter(characterId);
   }
 
   /** Coloca la cámara delante del personaje para la pantalla de elección (escena quieta, sin jugar). */
@@ -142,13 +181,14 @@ export class GameSession {
     this.onDummyChanged(this.dummy);
   }
 
-  private buildCharacter(characterId: CharacterId): CharacterRig {
-    return createCharacterModel(
+  private buildCharacter(characterId: CharacterId): CharacterView {
+    return new CharacterView(
       this.world.scene,
       CHARACTERS[characterId],
+      this.assets.characters[characterId],
+      this.assets.blade,
       this.world.materials,
       this.world.shadows,
-      LUMBRE_PALETTE.outline,
     );
   }
 
@@ -266,17 +306,19 @@ export class GameSession {
         const p = this.player;
         const s = this.settings.value;
         const animSeconds = this.playing && this.hitStop <= 0 ? frameSeconds : 0;
-        this.rig.root.position.set(lerp(p.prevX, p.x, alpha), 0, lerp(p.prevZ, p.z, alpha));
-        this.rig.root.rotation.y = lerpAngle(p.prevYaw, p.yaw, alpha);
+        const root = this.character.root;
+        root.position.set(lerp(p.prevX, p.x, alpha), 0, lerp(p.prevZ, p.z, alpha));
+        root.rotation.y = lerpAngle(p.prevYaw, p.yaw, alpha);
         const step = currentStep(this.combo);
-        this.animator.update(
+        // En la pantalla de elección el personaje respira (reposo) aunque la partida no avance.
+        this.character.update(
           {
             speed: this.playing ? p.speed : 0,
             dodge: dodgeProgress(p.dodge),
-            attack: step ? { step: this.combo.step, time: this.combo.time, data: step } : null,
+            attack: step ? { step: this.combo.step, time: this.combo.time } : null,
             reduceMotion: s.reduceMotion,
           },
-          this.playing ? frameSeconds : 0,
+          this.playing ? animSeconds : frameSeconds,
         );
         const flash = s.reduceFlashing ? 0 : flashIntensity(this.clock - this.flashStart);
         this.dummyView.update(this.dummy, flash, s.reduceMotion, animSeconds);

@@ -374,6 +374,36 @@ details summary {
   display: none;
 }
 
+.loading {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  background: var(--bg);
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.loading[hidden] {
+  display: none;
+}
+
+.loading-bar {
+  width: min(20rem, 70vw);
+  height: 0.6rem;
+  border-radius: 0.3rem;
+  background: var(--panel);
+  outline: 1px solid var(--muted);
+  overflow: hidden;
+}
+
+#loading-fill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+}
+
 #fatal {
   position: fixed;
   inset: 0;

@@ -4,7 +4,7 @@
 
 Ceniza y Luz: todos los derechos reservados. Titular: Danny Sivinta.
 
-Todo el arte (geometría, materiales, colores) y el sonido del juego se generan por código dentro del propio proyecto. No se usan modelos, texturas, fuentes ni sonidos de terceros.
+Los modelos 3D (personajes, enemigos y objetos) los crea el propio proyecto en Blender a partir de los scripts de `art/`; el entorno, los efectos y el sonido se generan por código. No se usan modelos, texturas, fuentes ni sonidos de terceros. Los archivos que produce Blender pertenecen al proyecto; la licencia de Blender no se aplica a ellos.
 
 ## Dependencias incluidas en el juego publicado
 
@@ -12,8 +12,11 @@ Todo el arte (geometría, materiales, colores) y el sonido del juego se generan 
 | ---------------------- | ------- | ---------- | -------------------------------------------------------------------------- |
 | `@babylonjs/core`      | 9.35.0  | Apache-2.0 | `licenses/babylonjs-core-LICENSE.md` y `licenses/babylonjs-core-NOTICE.md` |
 | `@babylonjs/materials` | 9.35.0  | Apache-2.0 | `licenses/babylonjs-materials-LICENSE.md`                                  |
+| `@babylonjs/loaders`   | 9.35.0  | Apache-2.0 | `licenses/babylonjs-loaders-LICENSE.md`                                    |
 
 El build copia estos archivos a `dist/licenses/` de forma automática.
+
+`babylonjs-gltf2interface` 9.35.0 (Apache-2.0) solo aporta tipos de TypeScript y no se incluye en el juego publicado.
 
 ## Herramientas de desarrollo (no se incluyen en el juego publicado)
 
@@ -29,3 +32,5 @@ El build copia estos archivos a `dist/licenses/` de forma automática.
 | `prettier`               | 3.9.10  | MIT        |
 | `globals`                | 17.14.0 | MIT        |
 | `@types/node`            | 26.6.6  | MIT        |
+
+Para generar los modelos se usa Blender 5.2.3 LTS (GPL), instalado aparte; no forma parte del juego ni del repositorio.

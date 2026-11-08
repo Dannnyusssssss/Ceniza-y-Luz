@@ -38,6 +38,7 @@ const THIRD_PARTY_NOTICES: readonly { from: string; to: string }[] = [
   { from: 'node_modules/@babylonjs/core/license.md', to: 'licenses/babylonjs-core-LICENSE.md' },
   { from: 'node_modules/@babylonjs/core/NOTICE.md', to: 'licenses/babylonjs-core-NOTICE.md' },
   { from: 'node_modules/@babylonjs/materials/license.md', to: 'licenses/babylonjs-materials-LICENSE.md' },
+  { from: 'node_modules/@babylonjs/loaders/license.md', to: 'licenses/babylonjs-loaders-LICENSE.md' },
 ];
 
 function thirdPartyNotices(): Plugin {

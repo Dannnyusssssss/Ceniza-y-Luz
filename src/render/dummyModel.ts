@@ -5,15 +5,11 @@ import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder';
 import type { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
 import type { DummyState } from '../game/dummy';
-import { applyOutline, type ToonMaterials } from './toon';
-import { SegmentBuilder } from './segmentBuilder';
+import type { LoadedModel } from '../engine/models';
+import { instantiateModel, type ModelInstance } from './modelMaterials';
+import type { ToonMaterials } from './toon';
 
 const COLORS = {
-  wood: '#8a5a3b',
-  straw: '#e3c27a',
-  strawDark: '#c39a52',
-  rope: '#7b4e2f',
-  target: '#c8553d',
   barBack: '#2a2233',
   barFill: '#f2c14e',
 } as const;
@@ -22,28 +18,23 @@ const BAR_WIDTH = 1.1;
 /** Tiempo que tarda el muñeco en desvanecerse en ceniza y en reaparecer. */
 const FADE_SECONDS = 0.6;
 
-/** Muñeco de práctica: poste, cuerpo de paja con diana y barra de vida flotante. */
+/** Muñeco de práctica (modelo de Blender) con barra de vida flotante. */
 export class DummyView {
   private readonly root: TransformNode;
-  private readonly body: Mesh;
+  /** Pivote en la base del poste: el bamboleo y el hundimiento se aplican aquí. */
+  private readonly body: TransformNode;
+  private readonly model: ModelInstance;
   private readonly barFill: Mesh;
   private readonly barRoot: TransformNode;
   private wobble = 0;
 
-  constructor(scene: Scene, materials: ToonMaterials, shadows: ShadowGenerator, outline: string) {
+  constructor(scene: Scene, model: LoadedModel, materials: ToonMaterials, shadows: ShadowGenerator) {
     this.root = new TransformNode('dummy', scene);
-    this.body = new SegmentBuilder(scene, 'dummyBody')
-      .cylinder(1.5, 0.14, 0.16, COLORS.wood, { y: 0.75 })
-      .box(1.1, 0.12, 0.12, COLORS.wood, { y: 1.2 })
-      .ico(0.38, COLORS.straw, { y: 1.05, sy: 1.25 })
-      .box(0.62, 0.08, 0.62, COLORS.rope, { y: 0.82 })
-      .cylinder(0.05, 0.36, 0.36, COLORS.target, { y: 1.1, z: 0.3, rx: Math.PI / 2 }, 8)
-      .cylinder(0.06, 0.16, 0.16, COLORS.straw, { y: 1.1, z: 0.32, rx: Math.PI / 2 }, 8)
-      .ico(0.22, COLORS.strawDark, { y: 1.66 })
-      .build(this.root, materials.get('#ffffff', { highlights: true }));
-    applyOutline(this.body, outline, 0.015);
-    shadows.addShadowCaster(this.body);
-    this.body.overlayColor = Color3.White();
+    this.body = new TransformNode('dummyBody', scene);
+    this.body.parent = this.root;
+    this.model = instantiateModel(model, materials, shadows);
+    this.model.root.parent = this.body;
+    for (const mesh of this.model.meshes) mesh.overlayColor = Color3.White();
 
     // Barra de vida: siempre mira a la cámara. El número exacto se muestra también como texto en el HUD.
     this.barRoot = new TransformNode('dummyBar', scene);
@@ -90,11 +81,12 @@ export class DummyView {
       visibility = Math.max(1 - fadeOut, fadeIn);
       sink = (1 - visibility) * 0.5;
     }
-    this.body.visibility = visibility;
     this.body.position.y = -sink;
     this.barRoot.setEnabled(dummy.respawn <= 0);
-
-    this.body.renderOverlay = flash > 0;
-    this.body.overlayAlpha = 0.65 * flash;
+    for (const mesh of this.model.meshes) {
+      mesh.visibility = visibility;
+      mesh.renderOverlay = flash > 0;
+      mesh.overlayAlpha = 0.65 * flash;
+    }
   }
 }

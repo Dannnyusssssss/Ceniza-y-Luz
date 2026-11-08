@@ -6,6 +6,8 @@ export interface CharacterColors {
   readonly skin: string;
   readonly hair: string;
   readonly eyes: string;
+  /** Color central del iris (la textura de la cara hace el degradado). */
+  readonly iris: string;
   /** Prenda principal y su tono oscuro. */
   readonly outfit: string;
   readonly outfitDark: string;
@@ -39,6 +41,7 @@ export const CHARACTERS: Readonly<Record<CharacterId, CharacterData>> = {
       skin: '#f1c6a4',
       hair: '#8a3a2c',
       eyes: '#2b1d2e',
+      iris: '#c9782f',
       outfit: '#e8734f',
       outfitDark: '#a8452f',
       accent: '#f4bd4f',
@@ -59,6 +62,7 @@ export const CHARACTERS: Readonly<Record<CharacterId, CharacterData>> = {
       skin: '#f1c6a4',
       hair: '#222a44',
       eyes: '#1d2230',
+      iris: '#3a86c4',
       outfit: '#2fa39a',
       outfitDark: '#2b3f78',
       accent: '#a6e6dc',

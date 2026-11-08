@@ -7,6 +7,10 @@ export const TEXTS = {
     contextRestored: 'Gráficos recuperados.',
     startFailed: 'No se pudo iniciar el juego. Recarga la página para intentarlo de nuevo.',
   },
+  loading: {
+    /** Se muestra con el porcentaje cargado. */
+    progress: (percent: number) => `Cargando… ${percent} %`,
+  },
   start: {
     subtitle: 'La Bruma se llevó a tu gemelo. Toma la Hoja de Luz y ve a buscarlo.',
     noticeTitle: 'Aviso de contenido',
