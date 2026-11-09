@@ -20,6 +20,7 @@ import { BLADE_COLORS, CHARACTERS } from '../src/data/characters.ts';
 import { LUMBRE_PALETTE } from '../src/data/palettes.ts';
 import { ENEMIES } from '../src/data/enemies.ts';
 import { GUARDIAN } from '../src/data/guardian.ts';
+import { REGENT } from '../src/data/regent.ts';
 import { NPCS } from '../src/data/npcs.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -43,6 +44,9 @@ const MODELS = [
   'shrine',
   'crystalwall',
   'guardian',
+  'regente',
+  'brazier',
+  'throne',
   'ilse',
   'oren',
   'teo',
@@ -84,6 +88,7 @@ function gameData() {
     characters: CHARACTERS,
     enemies: ENEMIES,
     guardian: GUARDIAN,
+    regent: REGENT,
     npcs: NPCS,
     timings: {
       dodge: DODGE_BALANCE.duration,

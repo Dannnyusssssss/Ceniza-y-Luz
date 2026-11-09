@@ -2,7 +2,7 @@ import type { Scene } from '@babylonjs/core/scene';
 import type { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
 import { CHARACTERS, type CharacterId } from '../data/characters';
 import type { EnemyKind } from '../data/enemies';
-import { INTRO_SHOTS, type IntroShot } from '../data/intro';
+import type { IntroShot } from '../data/intro';
 import type { ZoneData } from '../data/zones';
 import { CharacterView } from '../render/characterView';
 import type { EncounterView } from '../render/encounterView';
@@ -24,13 +24,13 @@ const CREATURES: readonly { kind: EnemyKind; x: number; z: number }[] = [
 ];
 
 /**
- * La intro: una serie de planos fijos. La cámara no se mueve nunca durante un plano; solo cambia de uno
+ * La intro y el final: una serie de planos fijos. La cámara no se mueve nunca durante un plano; solo cambia de uno
  * a otro cuando el jugador avanza el texto. Se anima a los personajes, no a la cámara.
  */
 export class IntroDirector {
   private readonly sibling: CharacterView;
   private readonly creatures: ActorView[] = [];
-  private shot: IntroShot = INTRO_SHOTS[0] as IntroShot;
+  private shot: IntroShot;
   private time = 0;
   private ashDebt = 0;
 
@@ -44,7 +44,9 @@ export class IntroDirector {
     materials: ToonMaterials,
     shadows: ShadowGenerator,
     characterId: CharacterId,
+    private readonly shots: readonly IntroShot[],
   ) {
+    this.shot = shots[0] as IntroShot;
     const siblingId = CHARACTERS[characterId].siblingId;
     this.sibling = new CharacterView(
       scene,
@@ -55,7 +57,7 @@ export class IntroDirector {
       shadows,
     );
     this.sibling.setBladeVisible(false);
-    for (const c of CREATURES) {
+    for (const c of shots.some((s) => s.creatures) ? CREATURES : []) {
       const yaw = Math.atan2(-c.x, -6 - c.z);
       const actor = createActor(
         scene,
@@ -75,7 +77,7 @@ export class IntroDirector {
 
   /** Pasa a un plano: un corte limpio, sin movimiento de cámara. */
   show(index: number): void {
-    const shot = INTRO_SHOTS[index];
+    const shot = this.shots[index];
     if (!shot) return;
     this.shot = shot;
     this.time = 0;
@@ -135,7 +137,7 @@ export class IntroDirector {
     const n = Math.floor(this.ashDebt);
     if (n > 0) {
       this.ashDebt -= n;
-      this.encounterView.mist(0, -2, n, 9, 3);
+      this.encounterView.mist(shot.ashAt?.x ?? 0, shot.ashAt?.z ?? -2, n, 9, 3);
     }
     this.encounterView.updateAsh(dt);
   }

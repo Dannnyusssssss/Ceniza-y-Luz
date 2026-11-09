@@ -1,9 +1,12 @@
 import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine';
 import type { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline';
+import { WebGPUCacheBindGroups } from '@babylonjs/core/Engines/WebGPU/webgpuCacheBindGroups';
 import { lerp, lerpAngle } from '../core/math';
 import type { SettingsStore } from '../core/settingsStore';
 import { CHARACTERS, type CharacterId } from '../data/characters';
-import { QUALITY_PRESETS } from '../data/quality';
+import { INTRO_SHOTS, type IntroShot } from '../data/intro';
+import { REGENT } from '../data/regent';
+import { QUALITY_PRESETS, renderScaling } from '../data/quality';
 import type { ZonePalette } from '../data/palettes';
 import type { NpcId } from '../data/zones';
 import { isGateOpen, type AdventureState } from '../game/adventure';
@@ -14,6 +17,7 @@ import type { DummyState } from '../game/dummy';
 import type { EncounterState } from '../game/encounter';
 import { flashIntensity, shakeOffset } from '../game/feedback';
 import type { GuardianState } from '../game/guardian';
+import type { RegentState } from '../game/regent';
 import { isDead } from '../game/health';
 import type { PlayerState } from '../game/player';
 import { applyLook, updateCameraPose, type CameraRig, type LookInput } from '../world/cameraRig';
@@ -22,6 +26,7 @@ import { ARROW_CAMERA_SPEED, MOUSE_CAMERA_SPEED } from '../data/controls';
 import { AbilityView } from '../render/abilityView';
 import { CharacterView } from '../render/characterView';
 import { GuardianView } from '../render/guardianView';
+import { RegentView } from '../render/regentView';
 import { DummyView } from '../render/dummyModel';
 import { EncounterView } from '../render/encounterView';
 import { ZoneEnvironment } from '../render/zoneEnvironment';
@@ -53,6 +58,7 @@ export interface ViewState {
   readonly hitStop: number;
   readonly abilities: AbilityState;
   readonly guardian: GuardianState | null;
+  readonly regent: RegentState | null;
 }
 
 /**
@@ -70,6 +76,9 @@ export class SessionView {
   private intro: IntroDirector | null = null;
   private readonly abilityView: AbilityView;
   private guardianView: GuardianView | null = null;
+  private regentView: RegentView | null = null;
+  /** Paleta de la zona actual: la oscuridad del eclipse se calcula a partir de ella. */
+  private look: ZonePalette | null = null;
   private groundAt: (x: number, z: number) => number = () => 0;
 
   constructor(
@@ -88,7 +97,7 @@ export class SessionView {
     this.abilityView = new AbilityView(world.scene, world.materials, () => this.groundAt);
     settings.onChange((s) => {
       const q = QUALITY_PRESETS[s.quality];
-      engine.setHardwareScalingLevel(q.hardwareScaling);
+      engine.setHardwareScalingLevel(renderScaling(q, s.resolutionScale));
       applyShadowFilter(world.shadows, q);
       applyPostProcessQuality(this.pipeline, q);
       this.camera.setFov(s.fov);
@@ -126,11 +135,21 @@ export class SessionView {
     this.abilityView.clear();
     this.guardianView?.dispose();
     this.guardianView = null;
+    this.regentView?.dispose();
+    this.regentView = null;
+    // La caché de WebGPU guarda una entrada por cada combinación de buffers y nunca las olvida: cada zona crea
+    // buffers nuevos, así que sin esto la memoria crece con cada cambio de zona. Se rehace sola al dibujar.
+    WebGPUCacheBindGroups.ResetCache();
   }
 
   /** Destello del jefe al recibir un golpe (quien llama respeta el límite de 3 por segundo). */
   flashGuardian(): void {
     this.guardianView?.flash();
+  }
+
+  /** Destello del Regente al recibir un golpe (quien llama respeta el límite de 3 por segundo). */
+  flashRegent(): void {
+    this.regentView?.flash();
   }
 
   /** Crea lo que se ve de la zona actual de la aventura. */
@@ -140,19 +159,41 @@ export class SessionView {
     const look = palette ?? zone.palette;
     const { scene, materials, shadows } = this.world;
     applyPalette(this.world, look);
+    this.look = look;
     setShadowExtent(this.world, zone.shadowExtent);
     this.environment = new ZoneEnvironment(scene, zone, adventure.layout, look, materials, shadows);
     this.props = new ZoneProps(scene, zone, this.assets.props, materials, shadows, adventure, { npcs });
     this.groundAt = (x, z) => groundHeight(zone, x, z);
     this.encounterView.setGround(this.groundAt);
-    if (zone.boss && !adventure.progress.bosses.includes(zone.boss.id)) {
+    if (zone.boss?.id === 'guardian' && !adventure.progress.bosses.includes('guardian')) {
       this.guardianView = new GuardianView(scene, this.assets.guardian, materials, shadows, this.groundAt);
+    }
+    if (zone.boss?.id === 'regente') {
+      const siblingId = CHARACTERS[adventure.progress.character].siblingId;
+      this.regentView = new RegentView(
+        scene,
+        this.assets,
+        materials,
+        shadows,
+        this.groundAt,
+        siblingId,
+        zone.boss,
+      );
     }
     this.dummyView.setVisible(zone.dummy !== null);
   }
 
-  startIntro(adventure: AdventureState, characterId: CharacterId): void {
-    this.character.setBladeVisible(false);
+  /** Una escena de planos fijos: la intro o el final. El protagonista lleva la Hoja solo si ya la tomó. */
+  startIntro(
+    adventure: AdventureState,
+    characterId: CharacterId,
+    shots: readonly IntroShot[] = INTRO_SHOTS,
+    bladeVisible = false,
+  ): void {
+    this.character.setBladeVisible(bladeVisible);
+    // En la escena manda el director: lo que hubiera en la sala del trono ya no se dibuja.
+    this.regentView?.dispose();
+    this.regentView = null;
     this.intro = new IntroDirector(
       this.world.scene,
       adventure.zone,
@@ -163,6 +204,7 @@ export class SessionView {
       this.world.materials,
       this.world.shadows,
       characterId,
+      shots,
     );
   }
 
@@ -223,7 +265,18 @@ export class SessionView {
 
   /** Dibuja un fotograma: entorno, objetos, personaje, muñeco y combate. */
   render(state: ViewState, feedback: CombatFeedback, frameSeconds: number, alpha: number): void {
-    const { player: p, encounter, adventure, combo, dummy, playing, hitStop, abilities, guardian } = state;
+    const {
+      player: p,
+      encounter,
+      adventure,
+      combo,
+      dummy,
+      playing,
+      hitStop,
+      abilities,
+      guardian,
+      regent,
+    } = state;
     const s = this.settings.value;
     const health = encounter.health;
     const zone = adventure.zone;
@@ -274,5 +327,22 @@ export class SessionView {
         this.encounterView.mist(guardian.x, guardian.z, count, 1.4, 3.2);
       }
     }
+    if (regent && this.regentView) {
+      const rescued = adventure.progress.flags.includes('gameCompleted');
+      this.regentView.update(regent, alpha, animSeconds, s.reduceFlashing, s.reduceMotion, rescued);
+      this.applyEclipse(regent.eclipse);
+      if (regent.phase === 'dying' && animSeconds > 0) {
+        const count = Math.floor((s.reduceMotion ? 40 : 90) * animSeconds + Math.random());
+        this.encounterView.mist(regent.x, regent.z, count, 1.2, 3.6);
+      }
+    }
+  }
+
+  /** Baja la luz de la sala según el eclipse. Sigue un valor que cambia despacio: nunca es un parpadeo. */
+  private applyEclipse(eclipse: number): void {
+    if (!this.look) return;
+    const factor = 1 - eclipse * REGENT.eclipseDim;
+    this.world.sun.intensity = this.look.sunIntensity * factor;
+    this.world.hemi.intensity = this.look.hemiIntensity * factor;
   }
 }

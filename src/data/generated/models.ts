@@ -569,4 +569,79 @@ export const MODELS = {
     triangles: 7050,
     textures: [],
   },
+  regente: {
+    model: 'regente',
+    clips: {
+      idle: {
+        frames: 120,
+        seconds: 2,
+      },
+      move: {
+        frames: 90,
+        seconds: 1.5,
+      },
+      sweepWindup: {
+        frames: 63,
+        seconds: 1.05,
+      },
+      sweep: {
+        frames: 26,
+        seconds: 0.43333333333333335,
+      },
+      lungeWindup: {
+        frames: 72,
+        seconds: 1.2,
+      },
+      lunge: {
+        frames: 30,
+        seconds: 0.5,
+      },
+      castWindup: {
+        frames: 60,
+        seconds: 1,
+      },
+      cast: {
+        frames: 18,
+        seconds: 0.3,
+      },
+      stagger: {
+        frames: 216,
+        seconds: 3.6,
+      },
+      hurt: {
+        frames: 24,
+        seconds: 0.4,
+      },
+    },
+    bones: [
+      'root',
+      'hips',
+      'chest',
+      'head',
+      'upperarm.L',
+      'forearm.L',
+      'upperarm.R',
+      'forearm.R',
+      'thigh.L',
+      'shin.L',
+      'thigh.R',
+      'shin.R',
+    ],
+    triangles: 7326,
+    textures: [],
+  },
+  brazier: {
+    model: 'brazier',
+    clips: {},
+    bones: [],
+    triangles: 840,
+    textures: [],
+  },
+  throne: {
+    model: 'throne',
+    clips: {},
+    bones: [],
+    triangles: 300,
+    textures: [],
+  },
 } as const;

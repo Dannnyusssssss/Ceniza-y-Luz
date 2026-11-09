@@ -39,6 +39,8 @@ export function promptText(item: Interactable, progress: Progress): string {
       return t.block;
     case 'reset':
       return t.reset;
+    case 'rescue':
+      return t.rescue(CHARACTERS[CHARACTERS[progress.character].siblingId].name);
   }
 }
 
@@ -73,7 +75,6 @@ export function adventureMessage(event: AdventureEvent, progress: Progress): str
       if (!event.byKey) return null;
       return event.id === 'bosque-bruma' ? t.mistOpen : t.gateOpen;
     case 'gateLocked':
-      if (event.opens.kind === 'flag' && event.opens.flag === 'fortressOpen') return t.fortressClosed;
       return t.gateLocked[event.opens.kind];
     case 'abilityLearned':
       return t.abilityLearned[event.ability];
@@ -91,6 +92,7 @@ export function adventureMessage(event: AdventureEvent, progress: Progress): str
     case 'read':
     case 'rest':
     case 'blockPushed':
+    case 'rescue':
       return null;
   }
   return null;

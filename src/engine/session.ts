@@ -1,66 +1,48 @@
 import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine';
 import type { BrowserInput } from '../core/input';
-import { SYSTEM_ORDER, SystemRegistry } from '../core/systems';
+import { SystemRegistry } from '../core/systems';
 import type { SettingsStore } from '../core/settingsStore';
 import type { CharacterId } from '../data/characters';
-import { DUMMY_BALANCE, FEEDBACK_BALANCE, PLAYER_BALANCE } from '../data/balance';
+import { FEEDBACK_BALANCE } from '../data/balance';
+import { HOME_SHOTS, RESCUE_SHOTS } from '../data/intro';
 import { LUMBRE_NIGHT_PALETTE, type ZonePalette } from '../data/palettes';
-import { QUALITY_PRESETS } from '../data/quality';
-import { ZONES, type ExitData, type NpcId, type ZoneId } from '../data/zones';
+import { QUALITY_PRESETS, renderScaling } from '../data/quality';
+import { ZONES, type ExitData, type ZoneId } from '../data/zones';
 import {
   createAdventure,
-  currentExit,
-  defeatBoss,
   enterZone,
-  interact,
-  nearestInteractable,
   type AdventureEvent,
   type AdventureState,
   type Interactable,
 } from '../game/adventure';
 import type { AbilityState } from '../game/abilities';
-import { createPlayer, updatePlayer, type PlayerState } from '../game/player';
-import { createGuardian, resetGuardian, type GuardianEvent, type GuardianState } from '../game/guardian';
+import { createPlayer, type PlayerState } from '../game/player';
+import { createGuardian, type GuardianEvent, type GuardianState } from '../game/guardian';
+import { createRegent, type RegentEvent, type RegentState } from '../game/regent';
 import { isInvulnerable } from '../game/dodge';
-import {
-  cancelCombo,
-  comboModifiers,
-  createCombo,
-  currentStep,
-  inHitWindow,
-  isInArc,
-  updateCombo,
-  type ComboState,
-} from '../game/combat';
-import { createDummy, hitDummy, updateDummy, type DummyState } from '../game/dummy';
+import { cancelCombo, createCombo, type ComboState } from '../game/combat';
+import { createDummy, type DummyState } from '../game/dummy';
 import {
   clearCombat,
   createEncounter,
   resetEncounter,
   retryEncounter,
   spawnZoneEnemies,
-  updateEncounter,
   type EncounterState,
 } from '../game/encounter';
-import { isDead, reviveLoaded, resetHealth, setLife } from '../game/health';
+import { reviveLoaded, resetHealth, setLife } from '../game/health';
 import { addSparks, usePotion } from '../game/inventory';
-import {
-  createProgress,
-  dodgeCooldownFactor,
-  hasFlag,
-  maxQuarters,
-  setFlag,
-  templeFactor,
-  type Progress,
-} from '../game/progress';
+import { createProgress, hasFlag, maxQuarters, setFlag, type Progress } from '../game/progress';
 import { createCameraRig, type CameraRig } from '../world/cameraRig';
 import { Music } from '../audio/music';
 import { Sfx } from '../audio/sfx';
 import { loadAssets, type SessionAssets } from './assets';
 import { CombatFeedback } from './combatFeedback';
 import { PowersRunner, type PowersContext } from './powers';
-import { playAdventureEffects, playGuardianEffects, type EffectTargets } from './sessionEffects';
-import { buildHudSnapshot, type HudSnapshot } from './sessionHud';
+import { RegentRunner } from './regentRunner';
+import { SessionEvents } from './sessionEvents';
+import type { HudSnapshot } from './sessionHud';
+import { registerSessionSystems } from './sessionSystems';
 import { SolidBlocks } from './solidBlocks';
 import { SessionView } from './sessionView';
 import { createWorldScene, type WorldScene } from './worldScene';
@@ -70,8 +52,6 @@ export type GameMode = 'story' | 'arena';
 
 /** Inclinación de la cámara al mostrar al personaje en la pantalla de elección. */
 const SHOWCASE_PITCH = 0.1;
-/** Cada cuántos pasos de lógica se busca qué hay al alcance (6 = 10 veces por segundo). */
-const PROMPT_EVERY_STEPS = 6;
 /** Todas las zonas tienen este punto de llegada: es donde se empieza. */
 const START_ENTRY = 'start';
 
@@ -92,7 +72,9 @@ export class GameSession {
   readonly sfx = new Sfx();
   readonly music = new Music();
   readonly powers: PowersRunner;
+  readonly regentRunner: RegentRunner;
   guardian: GuardianState | null = null;
+  regent: RegentState | null = null;
   adventure: AdventureState;
   /** Pausa de impacto restante (s). */
   hitStop = 0;
@@ -112,11 +94,13 @@ export class GameSession {
   onExit: (exit: ExitData) => void = () => undefined;
   /** Algo importante del jefe: la interfaz lo muestra (toda señal sonora tiene su señal visual). */
   onGuardian: (event: GuardianEvent) => void = () => undefined;
-  private readonly view: SessionView;
-  private readonly feedback: CombatFeedback;
-  private stepCount = 0;
-  private prompt: Interactable | null = null;
+  onRegent: (event: RegentEvent) => void = () => undefined;
+  readonly view: SessionView;
+  readonly feedback: CombatFeedback;
+  /** Lo que se puede usar ahora con E. */
+  prompt: Interactable | null = null;
   private readonly solids = new SolidBlocks();
+  private readonly events = new SessionEvents(this);
 
   /** Crea la escena, carga los modelos y prepara la partida. */
   static async create(
@@ -128,7 +112,7 @@ export class GameSession {
     onProgress: (fraction: number) => void = () => undefined,
   ): Promise<GameSession> {
     const quality = QUALITY_PRESETS[settings.value.quality];
-    engine.setHardwareScalingLevel(quality.hardwareScaling);
+    engine.setHardwareScalingLevel(renderScaling(quality, settings.value.resolutionScale));
     const world = createWorldScene(engine, ZONES.lumbre.palette, quality);
     try {
       const assets = await loadAssets(world, onProgress);
@@ -141,8 +125,8 @@ export class GameSession {
 
   private constructor(
     private readonly engine: AbstractEngine,
-    private readonly input: BrowserInput,
-    private readonly settings: SettingsStore,
+    readonly input: BrowserInput,
+    readonly settings: SettingsStore,
     characterId: CharacterId,
     readonly mode: GameMode,
     world: WorldScene,
@@ -165,9 +149,20 @@ export class GameSession {
         if (this.feedback.handle(events)) this.feedback.shake();
       },
       onAdventureEvents: (events) => this.handleAdventure(events),
-      onGuardianEvents: (events) => this.handleGuardian(events),
+      onGuardianEvents: (events) => this.events.guardian(events),
+      onRegentEvents: (events) => this.events.regent(events),
       onBurst: (x, z) => this.view.encounterView.burst(x, z, settings.value.reduceMotion),
       onDummyHit: (dummy) => this.onDummyChanged(dummy),
+      onBladeImpact: () => {
+        this.hitStop = FEEDBACK_BALANCE.hitStop;
+        this.feedback.shake();
+      },
+    });
+    this.regentRunner = new RegentRunner({
+      onEncounterEvents: (events) => {
+        if (this.feedback.handle(events)) this.feedback.shake();
+      },
+      onRegentEvents: (events) => this.events.regent(events),
       onBladeImpact: () => {
         this.hitStop = FEEDBACK_BALANCE.hitStop;
         this.feedback.shake();
@@ -181,7 +176,7 @@ export class GameSession {
     });
     this.view.setBladeVisible(hasFlag(this.progress, 'bladeTaken'));
     this.loadZone(this.homeZone(), START_ENTRY);
-    this.registerSystems();
+    registerSessionSystems(this.systems, this);
   }
 
   private homeZone(): ZoneId {
@@ -215,7 +210,9 @@ export class GameSession {
     enterZone(this.adventure, zoneId);
     const zone = this.adventure.zone;
     const boss = zone.boss;
-    this.guardian = boss ? createGuardian(boss, this.progress.bosses.includes(boss.id)) : null;
+    const beaten = boss ? this.progress.bosses.includes(boss.id) : false;
+    this.guardian = boss?.id === 'guardian' ? createGuardian(boss, beaten) : null;
+    this.regent = boss?.id === 'regente' ? createRegent(boss, beaten) : null;
     this.view.loadZone(this.adventure, palette, npcs);
     this.music.setZone(zoneId);
     spawnZoneEnemies(this.encounter, zone.enemies);
@@ -276,6 +273,18 @@ export class GameSession {
     setFlag(this.progress, 'introSeen');
     this.loadZone('lumbre', START_ENTRY);
     this.view.setBladeVisible(false);
+  }
+
+  /** El final, en la sala del trono: planos fijos con los dos gemelos. */
+  startRescueScene(): void {
+    this.view.startIntro(this.adventure, this.progress.character, RESCUE_SHOTS, true);
+  }
+
+  /** El final, de vuelta en Lumbre. La partida guardada no cambia de lugar: sigue en el último faro. */
+  startHomeScene(): void {
+    this.view.endIntro();
+    this.loadZone('lumbre', START_ENTRY);
+    this.view.startIntro(this.adventure, this.progress.character, HOME_SHOTS, true);
   }
 
   /** Continúa una partida guardada. */
@@ -353,12 +362,12 @@ export class GameSession {
   }
 
   /** Bloques sólidos de este paso: los de la zona y el muñeco en pie. */
-  private blocksNow(): ReturnType<SolidBlocks['get']> {
+  blocksNow(): ReturnType<SolidBlocks['get']> {
     return this.solids.get(this.adventure, this.dummy);
   }
 
   /** Lo que necesitan las habilidades y el jefe en este paso. */
-  private powersContext(): PowersContext {
+  powersContext(): PowersContext {
     return {
       adventure: this.adventure,
       player: this.player,
@@ -366,238 +375,20 @@ export class GameSession {
       combo: this.combo,
       dummy: this.dummy,
       guardian: this.guardian,
+      regent: this.regent,
       cameraYaw: this.cameraRig.yaw,
       damageSetting: this.settings.value.damageTaken,
       invulnerable: isInvulnerable(this.player.dodge) || this.powers.dashing,
     };
   }
 
-  private effects(): EffectTargets {
-    return {
-      sfx: this.sfx,
-      music: this.music,
-      feedback: this.feedback,
-      view: this.view,
-      reduceMotion: this.settings.value.reduceMotion,
-    };
+  /** Atiende lo que pasó en el mundo. */
+  handleAdventure(events: readonly AdventureEvent[]): void {
+    this.events.adventure(events);
   }
 
-  private handleGuardian(events: readonly GuardianEvent[]): void {
-    for (const e of events) {
-      playGuardianEffects(this.effects(), this.guardian, e);
-      if (e.type === 'guardianDefeated' && this.guardian) {
-        this.handleAdventure(defeatBoss(this.adventure, this.guardian.data.id));
-      }
-      this.onGuardian(e);
-    }
-  }
-
-  /** Comprueba si el golpe actual alcanza al muñeco. */
-  private resolveDummyHit(): boolean {
-    if (!this.adventure.zone.dummy) return false;
-    const step = currentStep(this.combo);
-    if (!step || !inHitWindow(this.combo)) return false;
-    const p = this.player;
-    const reach = isInArc(
-      p.x,
-      p.z,
-      p.yaw,
-      this.dummy.x,
-      this.dummy.z,
-      DUMMY_BALANCE.radius,
-      step.range,
-      step.halfArc,
-    );
-    const damage = Math.round(step.damage * templeFactor(this.progress.temple));
-    if (!reach || hitDummy(this.dummy, damage, this.combo.swingId) <= 0) return false;
-    this.onDummyChanged(this.dummy);
-    if (this.feedback.tryFlash()) this.feedback.flashStart = this.feedback.clock;
-    return true;
-  }
-
-  /** Efectos de usar un objeto; los textos los pone la interfaz. */
-  private handleAdventure(events: readonly AdventureEvent[]): void {
-    for (const e of events) {
-      playAdventureEffects(this.effects(), e);
-      if (e.type === 'talk') this.faceNpc(e.npc);
-      if (e.type === 'rest') this.rest();
-      if (e.type === 'chestOpened' && e.result.heartGained) {
-        const max = maxQuarters(this.progress);
-        setLife(this.encounter.health, max, max);
-      }
-      this.onAdventure(e);
-    }
-  }
-
-  private faceNpc(id: NpcId): void {
-    const npc = this.adventure.zone.npcs.find((n) => n.id === id);
-    if (!npc) return;
-    const p = this.player;
-    p.yaw = p.prevYaw = Math.atan2(npc.x - p.x, npc.z - p.z);
-    this.view.setTalking(id, p.x, p.z);
-  }
-
-  /** Descansar: cura, y los enemigos de la zona vuelven a su sitio. */
-  private rest(): void {
-    this.sfx.play('rest');
-    resetHealth(this.encounter.health);
-    this.view.encounterView.clear();
-    clearCombat(this.encounter);
-    spawnZoneEnemies(this.encounter, this.adventure.zone.enemies);
-    if (this.guardian) resetGuardian(this.guardian);
-  }
-
-  /** Busca qué hay al alcance (unas veces por segundo), lo usa si se pulsó E y comprueba las salidas. */
-  private updateInteraction(pressed: boolean): void {
-    const p = this.player;
-    if (++this.stepCount % PROMPT_EVERY_STEPS === 0 || pressed) {
-      this.prompt = nearestInteractable(this.adventure, p.x, p.z);
-    }
-    if (pressed && this.prompt) {
-      const item = this.prompt;
-      this.prompt = null;
-      this.handleAdventure(interact(this.adventure, item, p.x, p.z));
-      return;
-    }
-    const exit = currentExit(this.adventure, p.x, p.z);
-    if (exit) this.onExit(exit);
-  }
-
-  private registerSystems(): void {
-    const state = this.input.state;
-
-    this.systems.register({
-      name: 'player',
-      order: SYSTEM_ORDER.player,
-      fixedUpdate: (dt) => {
-        if (!this.playing) return;
-        this.feedback.clock += dt;
-        if (this.hitStop > 0) {
-          // Pausa de impacto: un instante congelado al conectar un golpe.
-          this.hitStop = Math.max(0, this.hitStop - dt);
-          return;
-        }
-        const health = this.encounter.health;
-        // Caído o empujado por un golpe: no responde a los controles.
-        const stunned = isDead(health) || health.knockTime > 0;
-        const dodgePressed = state.takePressed('dodge') && !stunned;
-        const dodging = this.player.dodge.phase === 'dodging';
-        const axisNow = stunned ? { x: 0, z: 0 } : state.moveAxis();
-        const dashing = this.powers.handleInput(this.powersContext(), dt, {
-          stunned,
-          dodging,
-          pulse: state.takePressed('pulse'),
-          dash: state.takePressed('dash'),
-          moveX: axisNow.x,
-          moveZ: axisNow.z,
-          blocks: this.blocksNow(),
-        });
-        if (dashing) {
-          // La carrera manda: ni otros movimientos ni ataques hasta que termine.
-          state.takePressed('attack');
-          state.takePressed('dodge');
-          this.updateInteraction(false);
-          return;
-        }
-        // Sin la Hoja no hay ataque.
-        const hasBlade = hasFlag(this.progress, 'bladeTaken');
-        const attackPressed = state.takePressed('attack') && !dodging && !stunned && hasBlade;
-        if (dodgePressed && this.player.dodge.phase === 'ready') cancelCombo(this.combo);
-        const wasReady = this.player.dodge.phase === 'ready';
-        if (updateCombo(this.combo, attackPressed, dt) !== null) this.sfx.play('swing', this.combo.step);
-        this.player.dodge.cooldownFactor = dodgeCooldownFactor(this.progress);
-        updatePlayer(
-          this.player,
-          { moveX: axisNow.x, moveZ: axisNow.z, walk: state.isDown('walk'), dodge: dodgePressed },
-          this.cameraRig.yaw,
-          dt,
-          this.blocksNow(),
-          comboModifiers(this.combo),
-        );
-        if (wasReady && this.player.dodge.phase === 'dodging') this.sfx.play('dodge');
-        this.updateInteraction(state.takePressed('interact') && !stunned);
-      },
-    });
-
-    this.systems.register({
-      name: 'combat',
-      order: SYSTEM_ORDER.combat,
-      fixedUpdate: (dt) => {
-        if (!this.playing || this.hitStop > 0) return;
-        this.powers.stepGuardian(this.powersContext(), dt);
-        const dummyHit = this.resolveDummyHit();
-        if (dummyHit) this.sfx.play('hit');
-        const events = updateEncounter(this.encounter, dt, {
-          player: this.player,
-          playerRadius: PLAYER_BALANCE.radius,
-          combo: this.combo,
-          dodging: isInvulnerable(this.player.dodge) || this.powers.dashing,
-          damageSetting: this.settings.value.damageTaken,
-          blocks: this.blocksNow(),
-          damageFactor: templeFactor(this.progress.temple),
-        });
-        this.powers.stepPulses(this.powersContext(), dt, this.blocksNow());
-        const impact = this.feedback.handle(events) || dummyHit;
-        if (impact) {
-          this.hitStop = FEEDBACK_BALANCE.hitStop;
-          this.feedback.shake();
-        }
-      },
-    });
-
-    this.systems.register({
-      name: 'dummy',
-      order: SYSTEM_ORDER.dummy,
-      fixedUpdate: (dt) => {
-        if (!this.playing || !this.adventure.zone.dummy) return;
-        const wasDefeated = this.dummy.respawn > 0;
-        updateDummy(this.dummy, dt);
-        if (wasDefeated && this.dummy.respawn === 0) this.onDummyChanged(this.dummy);
-      },
-    });
-
-    this.systems.register({
-      name: 'camera',
-      order: SYSTEM_ORDER.camera,
-      frameUpdate: (frameSeconds, alpha) => {
-        const mouse = state.takeMouseDelta();
-        const look = this.playing
-          ? {
-              mouseX: mouse.x,
-              mouseY: mouse.y,
-              arrowX: (state.isDown('camRight') ? 1 : 0) - (state.isDown('camLeft') ? 1 : 0),
-              arrowY: (state.isDown('camUp') ? 1 : 0) - (state.isDown('camDown') ? 1 : 0),
-            }
-          : null;
-        this.view.updateCamera(this.cameraRig, this, look, this.feedback, frameSeconds, alpha);
-      },
-    });
-
-    this.systems.register({
-      name: 'render',
-      order: SYSTEM_ORDER.render,
-      frameUpdate: (frameSeconds, alpha) => this.view.render(this, this.feedback, frameSeconds, alpha),
-    });
-
-    this.systems.register({
-      name: 'ui',
-      order: SYSTEM_ORDER.ui,
-      frameUpdate: () => {
-        if (!this.playing) return;
-        this.onHud(
-          buildHudSnapshot({
-            encounter: this.encounter,
-            progress: this.progress,
-            player: this.player,
-            zone: this.adventure.zone,
-            abilities: this.powers.state,
-            guardian: this.guardian,
-            prompt: this.prompt,
-            arena: this.mode === 'arena',
-          }),
-        );
-      },
-    });
+  get reduceMotion(): boolean {
+    return this.settings.value.reduceMotion;
   }
 
   dispose(): void {

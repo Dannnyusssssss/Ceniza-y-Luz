@@ -12,7 +12,7 @@ import {
 import { TEXTS } from '../data/texts';
 import { button, h, uniqueId } from './dom';
 
-type BooleanKey = 'muted' | 'music' | 'reduceFlashing' | 'reduceMotion' | 'invertY';
+type BooleanKey = 'muted' | 'music' | 'reduceFlashing' | 'reduceMotion' | 'invertY' | 'dynamicResolution';
 
 /** Formulario de ajustes. Cada cambio se aplica y se guarda al instante. */
 export function createSettingsPanel(
@@ -125,6 +125,7 @@ export function createSettingsPanel(
     checkbox('invertY', t.invertY),
     range('fov', t.fov, FOV_RANGE, (v) => `${v}${t.fovUnit}`),
     select('quality', t.quality, QUALITY_LEVELS, t.qualityOptions),
+    checkbox('dynamicResolution', t.dynamicResolution),
     select('fpsLimit', t.fpsLimit, FPS_LIMITS, t.fpsLimitOptions),
     select('textSize', t.textSize, TEXT_SIZES, t.textSizeOptions),
     select('damageTaken', t.damageTaken, DAMAGE_TAKEN_LEVELS, t.damageTakenOptions),

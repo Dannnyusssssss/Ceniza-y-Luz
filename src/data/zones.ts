@@ -2,17 +2,19 @@ import { ARENA, type BlockData, type Point2 } from './arena';
 import type { EnemyKind } from './enemies';
 import type { AbilityId, ChestContents, KeyId } from './items';
 import { BOSQUE_PALETTE, CIENAGA_PALETTE, CUEVA_PALETTE, LUMBRE_PALETTE, type ZonePalette } from './palettes';
+import { crack, prop, ruin } from './zoneBlocks';
+import { FORTALEZA } from './zoneFortaleza';
 
-/** Las zonas construidas; la Fortaleza llega en su hito. */
-export type ZoneId = 'lumbre' | 'bosque' | 'cienaga' | 'cueva' | 'arena';
+/** Las zonas del juego. */
+export type ZoneId = 'lumbre' | 'bosque' | 'cienaga' | 'cueva' | 'fortaleza' | 'arena';
 
 /** Marcas de historia que se guardan. */
-export type StoryFlag = 'introSeen' | 'bladeTaken' | 'metIlse' | 'fortressOpen';
-export const STORY_FLAGS: readonly StoryFlag[] = ['introSeen', 'bladeTaken', 'metIlse', 'fortressOpen'];
+export type StoryFlag = 'introSeen' | 'bladeTaken' | 'metIlse' | 'gameCompleted';
+export const STORY_FLAGS: readonly StoryFlag[] = ['introSeen', 'bladeTaken', 'metIlse', 'gameCompleted'];
 
 /** Jefes que se vencen una sola vez. */
-export type BossId = 'guardian';
-export const BOSS_IDS: readonly BossId[] = ['guardian'];
+export type BossId = 'guardian' | 'regente';
+export const BOSS_IDS: readonly BossId[] = ['guardian', 'regente'];
 
 export interface Placement extends Point2 {
   readonly yaw: number;
@@ -134,7 +136,11 @@ export type SignTextId =
   | 'grieta'
   | 'cristal'
   | 'guardian'
-  | 'fortaleza';
+  | 'fortaleza'
+  | 'fortalezaBloques'
+  | 'fortalezaGrieta'
+  | 'fortalezaBraseros'
+  | 'fortalezaTrono';
 
 /** Cartel que se puede leer. `text` es la clave en `TEXTS.signs`. */
 export interface SignData extends Point2 {
@@ -181,18 +187,8 @@ export interface ZoneData {
   readonly boss: BossData | null;
   /** Puntos donde cae un haz de luz (mallas brillantes, no luz real). */
   readonly shafts: readonly Point2[];
-}
-
-function ruin(x: number, z: number, halfX: number, halfZ: number, height = 1.8): BlockData {
-  return { x, z, halfX, halfZ, height, kind: 'ruin' };
-}
-
-function prop(x: number, z: number, halfX: number, halfZ: number, height = 2): BlockData {
-  return { x, z, halfX, halfZ, height, kind: 'prop' };
-}
-
-function crack(x: number, z: number, halfX: number, halfZ: number): BlockData {
-  return { x, z, halfX, halfZ, height: 0, kind: 'crack' };
+  /** Dónde se libera al gemelo, una vez vencido el Regente. */
+  readonly rescue?: Point2;
 }
 
 /** Sin altares ni jefe: lo que comparten las zonas sencillas. */
@@ -620,6 +616,7 @@ const CUEVA: ZoneData = {
     fromCienaga: { x: 0, z: -35.5, yaw: 0 },
     entrada: { x: 6, z: -28.5, yaw: 0 },
     medio: { x: -5, z: 10.5, yaw: 0 },
+    fromFortaleza: { x: 0, z: 36.4, yaw: Math.PI },
   },
   bumps: [
     { x: 22, z: -26, radius: 9, height: 0.8 },
@@ -742,7 +739,7 @@ const CUEVA: ZoneData = {
       z: 38.8,
       width: 5,
       alongX: true,
-      opens: { kind: 'flag', flag: 'fortressOpen' },
+      opens: { kind: 'boss', boss: 'guardian' },
     },
   ],
   signs: [
@@ -752,7 +749,10 @@ const CUEVA: ZoneData = {
     { id: 'cueva-cartel-guardian', x: -3.6, z: 12, text: 'guardian' },
     { id: 'cueva-cartel-fortaleza', x: 3.2, z: 36.6, text: 'fortaleza' },
   ],
-  exits: [{ x: 0, z: -39.4, halfX: 3.6, halfZ: 0.6, to: 'cienaga', entry: 'fromCueva' }],
+  exits: [
+    { x: 0, z: -39.4, halfX: 3.6, halfZ: 0.6, to: 'cienaga', entry: 'fromCueva' },
+    { x: 0, z: 39.5, halfX: 3.6, halfZ: 0.5, to: 'fortaleza', entry: 'fromCueva' },
+  ],
   crystals: [
     { x: -28, z: -6 },
     { x: 27, z: -20 },
@@ -826,11 +826,12 @@ export const ZONES: Readonly<Record<ZoneId, ZoneData>> = {
   bosque: BOSQUE,
   cienaga: CIENAGA,
   cueva: CUEVA,
+  fortaleza: FORTALEZA,
   arena: ARENA_ZONE,
 };
 
 /** Zonas de la aventura (las que se pueden guardar). */
-export const STORY_ZONES: readonly ZoneId[] = ['lumbre', 'bosque', 'cienaga', 'cueva'];
+export const STORY_ZONES: readonly ZoneId[] = ['lumbre', 'bosque', 'cienaga', 'cueva', 'fortaleza'];
 
 export const FIRST_ZONE: ZoneId = 'lumbre';
 export const FIRST_ENTRY = 'start';

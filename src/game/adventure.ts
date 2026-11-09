@@ -56,7 +56,8 @@ export type Interactable =
       readonly x: number;
       readonly z: number;
     }
-  | { readonly kind: 'reset'; readonly puzzle: string; readonly x: number; readonly z: number };
+  | { readonly kind: 'reset'; readonly puzzle: string; readonly x: number; readonly z: number }
+  | { readonly kind: 'rescue'; readonly x: number; readonly z: number };
 
 /** Lo que pasó al interactuar: lo atienden el sonido, los efectos y la interfaz. */
 export type AdventureEvent =
@@ -74,7 +75,9 @@ export type AdventureEvent =
   | { readonly type: 'blockPushed' }
   | { readonly type: 'blockStuck' }
   | { readonly type: 'puzzleSolved'; readonly id: string }
-  | { readonly type: 'puzzleReset'; readonly id: string };
+  | { readonly type: 'puzzleReset'; readonly id: string }
+  /** Se libera al gemelo: empieza el final. */
+  | { readonly type: 'rescue' };
 
 /** La zona en la que está el jugador con el estado de sus puzzles. Lógica pura, sin motor gráfico. */
 export interface AdventureState {
@@ -215,6 +218,9 @@ export function listInteractables(adventure: AdventureState): Interactable[] {
   for (const g of zone.gates) {
     if (!isGateOpen(adventure, g)) list.push({ kind: 'gate', id: g.id, x: g.x, z: g.z });
   }
+  if (zone.rescue && progress.bosses.includes('regente') && !hasFlag(progress, 'gameCompleted')) {
+    list.push({ kind: 'rescue', x: zone.rescue.x, z: zone.rescue.z });
+  }
   for (const data of zonePuzzles(zone)) {
     const state = adventure.puzzles.get(data.id);
     if (!state || state.solved) continue;
@@ -245,6 +251,7 @@ function reachOf(item: Interactable, adventure: AdventureState): number {
     }
     case 'altar':
     case 'shrine':
+    case 'rescue':
       return 1 + REACH;
     default:
       return REACH + 0.5;
@@ -312,6 +319,13 @@ export function interact(
       return useSwitch(adventure, item.puzzle, item.id);
     case 'block':
       return useBlock(adventure, item.puzzle, item.index, x, z);
+    case 'rescue': {
+      if (hasFlag(progress, 'gameCompleted')) return [];
+      // Queda anotado aquí: si se cierra la página en mitad del final, la aventura ya está terminada.
+      setFlag(progress, 'gameCompleted');
+      progress.place = { ...progress.respawn };
+      return [{ type: 'rescue' }];
+    }
     case 'reset': {
       const state = adventure.puzzles.get(item.puzzle);
       const data = puzzleById(item.puzzle);

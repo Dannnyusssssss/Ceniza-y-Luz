@@ -1,7 +1,7 @@
 import type { BrowserInput, SystemAction } from '../core/input';
 import type { SettingsStore } from '../core/settingsStore';
 import type { CharacterId } from '../data/characters';
-import { INTRO_SHOTS } from '../data/intro';
+import { HOME_SHOTS, INTRO_SHOTS, RESCUE_SHOTS, type IntroShot } from '../data/intro';
 import { TEXT_SIZE_SCALE, type Settings } from '../data/settings';
 import { TEXTS, type Dialogue } from '../data/texts';
 import type { NpcId, ExitData } from '../data/zones';
@@ -9,6 +9,7 @@ import type { SaveSlot } from '../engine/saveSlot';
 import type { GameSession } from '../engine/session';
 import type { AdventureEvent } from '../game/adventure';
 import type { GuardianEvent } from '../game/guardian';
+import type { RegentEvent } from '../game/regent';
 import {
   advanceDialogue,
   currentLine,
@@ -20,6 +21,7 @@ import {
 import { setFlag, type Progress } from '../game/progress';
 import type { DebugOverlay } from './debug';
 import type { Hud } from './hud';
+import { showGuardianNotice, showRegentNotice } from './bossNotices';
 import { adventureMessage, speakerName } from './labels';
 import { Menus } from './menus';
 
@@ -45,6 +47,8 @@ export class App {
   /** Qué hacer al terminar el diálogo actual. */
   private afterDialogue: (() => void) | null = null;
   private introShot = 0;
+  /** El diálogo sigue con otro plano: no hay que ofrecer "Cerrar". */
+  private chained = false;
   /** Datos de la partida guardada, si hay. */
   private saved: Progress | null = null;
   readonly menus: Menus;
@@ -88,6 +92,7 @@ export class App {
     session.onAdventure = (event) => this.handleAdventure(event);
     session.onExit = (exit) => this.travel(exit);
     session.onGuardian = (event) => this.handleGuardian(event);
+    session.onRegent = (event) => this.handleRegent(event);
     hud.setDummy(session.dummy);
     settings.onChange((s) => this.applyUiSettings(s));
     this.applyUiSettings(settings.value);
@@ -125,6 +130,11 @@ export class App {
     this.menus.showStart(this.saved !== null);
   }
 
+  /** Un fallo del entorno (gráficos perdidos): la partida no sigue corriendo sin que se vea. */
+  pauseForError(): void {
+    if (this.state === 'playing') this.pause();
+  }
+
   private handlePauseKey(): void {
     if (performance.now() - this.lastPauseAt < PAUSE_DEBOUNCE_MS) return;
     if (this.state === 'dead' || this.state === 'intro' || this.state === 'transition') return;
@@ -159,25 +169,61 @@ export class App {
     this.state = 'intro';
     this.introShot = 0;
     this.session.startIntro(this.selected);
-    this.playIntroShot();
+    this.playShots(INTRO_SHOTS, () => this.finishIntro(), true);
   }
 
-  private playIntroShot(): void {
-    const shot = INTRO_SHOTS[this.introShot];
-    if (!shot) {
-      this.finishIntro();
-      return;
-    }
-    this.session.setIntroShot(this.introShot);
-    this.openDialogue(
-      shot.lines,
-      () => {
-        this.introShot++;
-        this.playIntroShot();
-      },
-      true,
-    );
+  /** Reproduce una serie de planos: cada uno avanza solo cuando el jugador termina de leerlo. */
+  private playShots(shots: readonly IntroShot[], onDone: () => void, canSkip: boolean): void {
+    this.introShot = 0;
+    this.chained = true;
+    const next = (): void => {
+      const shot = shots[this.introShot];
+      if (!shot) {
+        this.chained = false;
+        onDone();
+        return;
+      }
+      this.session.setIntroShot(this.introShot);
+      this.openDialogue(
+        shot.lines,
+        () => {
+          this.introShot++;
+          next();
+        },
+        canSkip,
+      );
+      this.state = 'intro';
+    };
+    next();
+  }
+
+  /** El gemelo es libre: planos en la sala del trono, vuelta a Lumbre y créditos. La partida ya queda guardada. */
+  private startEnding(): void {
+    if (!this.save()) this.hud.showMessage(TEXTS.world.autosaveFailed);
+    this.stopPlaying();
+    this.hud.setVisible(false);
+    this.session.startRescueScene();
+    this.playShots(RESCUE_SHOTS, () => this.goHome(), false);
     this.state = 'intro';
+    this.fadeIn();
+  }
+
+  private goHome(): void {
+    this.state = 'transition';
+    this.menus.hide();
+    const style = this.fade.style;
+    style.transition = `opacity ${this.fadeDuration()}ms ease`;
+    style.opacity = '1';
+    setTimeout(() => {
+      this.session.startHomeScene();
+      this.playShots(HOME_SHOTS, () => this.showCredits(), false);
+      this.fadeIn();
+    }, this.fadeDuration());
+  }
+
+  private showCredits(): void {
+    this.state = 'intro';
+    this.menus.showCredits(() => this.toStart());
   }
 
   /** Amanece en Lumbre: la partida empieza y queda guardada. */
@@ -187,10 +233,10 @@ export class App {
     this.menus.hide();
     this.session.endIntro();
     this.session.beginPlay();
-    this.save();
     this.enterPlaying();
     this.fadeIn();
     this.hud.showBanner(TEXTS.world.zones.lumbre);
+    if (!this.save()) this.hud.showMessage(TEXTS.world.autosaveFailed);
   }
 
   /** Continuar la partida guardada. */
@@ -286,7 +332,7 @@ export class App {
     this.menus.showDialogue({
       name: speakerName(line.speaker, progress),
       text: lineTextFor(line.text, progress.character),
-      isLast: cursor.index >= cursor.lines.length - 1 && !canSkip,
+      isLast: cursor.index >= cursor.lines.length - 1 && !this.chained,
       canSkip,
       onNext: () => this.nextLine(canSkip),
       onSkip: () => this.finishIntro(),
@@ -325,6 +371,9 @@ export class App {
       case 'read':
         this.openDialogue([{ speaker: 'narrator', text: TEXTS.signs[event.text] }], null);
         return;
+      case 'rescue':
+        this.startEnding();
+        return;
       case 'rest': {
         const ok = this.save();
         this.hud.showMessage(ok ? TEXTS.world.restSaved : TEXTS.world.restFailed);
@@ -334,41 +383,20 @@ export class App {
         const message = adventureMessage(event, progress);
         if (message) this.hud.showMessage(message);
         // Lo que no se debe repetir queda guardado en cuanto ocurre.
-        if (event.type === 'abilityLearned') this.save();
+        if (event.type === 'abilityLearned' && !this.save()) this.hud.showMessage(TEXTS.world.autosaveFailed);
       }
     }
   }
 
-  /** Avisos del jefe en pantalla: toda señal sonora tiene también su señal visual. */
+  /** Avisos del jefe; al vencerlo, la partida se guarda en cuanto ocurre. */
   private handleGuardian(event: GuardianEvent): void {
-    const t = TEXTS.world.guardian;
-    switch (event.type) {
-      case 'guardianAwake':
-        this.hud.showBanner(t.awake);
-        break;
-      case 'guardianWindup':
-        this.hud.showBanner(t.windup[event.attack]);
-        break;
-      case 'guardianStage':
-        this.hud.showBanner(t.stage);
-        break;
-      case 'guardianBlocked':
-        this.hud.showMessage(t.blocked);
-        break;
-      case 'guardianArmorBroken':
-        this.hud.showBanner(t.broken);
-        break;
-      case 'guardianArmorBack':
-        this.hud.showMessage(t.armorBack);
-        break;
-      case 'guardianReset':
-        this.hud.showMessage(t.reset);
-        break;
-      case 'guardianDefeated':
-        this.hud.showMessage(t.defeated);
-        if (!this.save()) this.hud.showMessage(TEXTS.world.autosaveFailed);
-        break;
-    }
+    showGuardianNotice(this.hud, event);
+    if (event.type === 'guardianDefeated' && !this.save()) this.hud.showMessage(TEXTS.world.autosaveFailed);
+  }
+
+  private handleRegent(event: RegentEvent): void {
+    showRegentNotice(this.hud, event, this.session.progress.character);
+    if (event.type === 'regentDefeated' && !this.save()) this.hud.showMessage(TEXTS.world.autosaveFailed);
   }
 
   private talkTo(npc: NpcId): void {

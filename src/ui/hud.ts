@@ -173,7 +173,13 @@ export class Hud {
     if (!boss) return;
     const t = TEXTS.hud;
     const base = t.bossLife(boss.name, Math.ceil(boss.health), boss.maxHealth);
-    const state = boss.armored ? ` · ${t.bossArmor}` : boss.staggered ? ` · ${t.bossStagger}` : '';
+    const state = boss.veil
+      ? ` · ${t.bossVeil(boss.veil.lit, boss.veil.total)}`
+      : boss.armored
+        ? ` · ${t.bossArmor}`
+        : boss.staggered
+          ? ` · ${boss.isRegent ? t.bossVeilBroken : t.bossStagger}`
+          : '';
     const text = base + state;
     if (this.bossLabel.textContent !== text) this.bossLabel.textContent = text;
     this.bossFill.style.width = `${Math.max(0, (boss.health / boss.maxHealth) * 100).toFixed(1)}%`;

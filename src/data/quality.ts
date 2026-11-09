@@ -46,6 +46,28 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualityPreset>> = {
   },
 };
 
+/** Cuándo baja la resolución interna si el equipo no llega a los FPS mínimos. */
+export const DYNAMIC_RESOLUTION = {
+  minFps: 50,
+  /** Segundos de cada tramo de medida. */
+  windowSeconds: 5,
+  /** Tramos lentos seguidos antes de actuar: un bajón corto no cuenta. */
+  windowsNeeded: 2,
+  step: 0.1,
+  minScale: 0.6,
+  /** Un fotograma más largo que esto es un parón suelto, no falta de potencia. */
+  maxFrameSeconds: 0.5,
+  /** Con un tope de FPS bajo, el mínimo pasa a ser esta fracción del tope. */
+  limitMargin: 0.83,
+  /** Tope del divisor de resolución: por encima, la imagen se vuelve ilegible. */
+  maxScaling: 2,
+} as const;
+
+/** Divisor de resolución final: el de la calidad elegida, más lo que haya bajado la escala dinámica. */
+export function renderScaling(preset: QualityPreset, resolutionScale: number): number {
+  return Math.min(DYNAMIC_RESOLUTION.maxScaling, preset.hardwareScaling / resolutionScale);
+}
+
 /** Presupuestos de render por zona (`ARCHITECTURE.md` interno: luces, sombras y llamadas de dibujo). */
 export const ZONE_BUDGET = {
   maxLights: 4,

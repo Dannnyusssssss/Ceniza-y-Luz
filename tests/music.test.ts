@@ -84,7 +84,6 @@ describe('composición', () => {
     for (const t of tracks) {
       expect(t.padVolume).toBeLessThanOrEqual(0.1);
       expect(t.melodyVolume).toBeLessThanOrEqual(0.1);
-      expect(t.ambience.volume).toBeLessThanOrEqual(0.05);
     }
   });
 });

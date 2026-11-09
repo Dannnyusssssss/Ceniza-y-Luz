@@ -333,7 +333,12 @@ function createShafts(
   const builder = new MeshBuilder();
   for (const p of zone.shafts) {
     const y = groundHeight(zone, p.x, p.z);
-    builder.cylinder(14, 1.2, 4.2, 7, palette.crystal, { x: p.x, y: y + 7, z: p.z, roll: 0.16 });
+    builder.cylinder(14, 1.2, 4.2, 7, palette.shaft ?? palette.crystal, {
+      x: p.x,
+      y: y + 7,
+      z: p.z,
+      roll: 0.16,
+    });
   }
   const material = new StandardMaterial('shafts', scene);
   material.disableLighting = true;

@@ -238,6 +238,24 @@ describe('versiones y migración', () => {
     expect(parseSave(serializeSave(p))).toEqual(p);
   });
 
+  it('guarda y recupera la Fortaleza, el Regente y el final de la aventura', () => {
+    const p = createProgress('ciro');
+    p.bosses.push('guardian', 'regente');
+    p.flags.push('gameCompleted');
+    p.place = { zone: 'fortaleza', entry: 'galeria' };
+    p.respawn = { zone: 'fortaleza', entry: 'galeria' };
+    p.puzzles.push('fortaleza-bloques', 'fortaleza-braseros');
+    p.gates.push('fortaleza-trono');
+    p.chests.push('fortaleza-patio');
+    expect(parseSave(serializeSave(p))).toEqual(p);
+  });
+
+  it('una partida guardada antes de existir la Fortaleza sigue siendo válida y pierde la marca retirada', () => {
+    const old = serializeSave(createProgress('alba'));
+    const raw = { ...(JSON.parse(old) as Record<string, unknown>), flags: ['introSeen', 'fortressOpen'] };
+    expect(parseSave(JSON.stringify(raw))?.flags).toEqual(['introSeen']);
+  });
+
   it('un guardado corrupto de la versión actual no da habilidades ni jefes inventados', () => {
     const raw = { version: SAVE_VERSION, character: 'alba', abilities: ['vuelo', 5], bosses: ['otro', null] };
     const p = parseSave(JSON.stringify(raw));

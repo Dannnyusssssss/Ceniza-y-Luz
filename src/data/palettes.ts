@@ -24,6 +24,8 @@ export interface ZonePalette {
   readonly motes?: string;
   /** Color de los muros de piedra; sin él, la piedra gris de siempre. */
   readonly stone?: string;
+  /** Color de los haces de luz; sin él, el de los cristales. */
+  readonly shaft?: string;
 }
 
 /** Lumbre: aldea cálida y segura al atardecer. */
@@ -115,6 +117,32 @@ export const CIENAGA_PALETTE: ZonePalette = {
   crack: '#143d44',
   motes: '#b8ffd8',
   stone: '#67786f',
+};
+
+/** Fortaleza del Eclipse: piedra negra, ceniza roja y brasas doradas. */
+export const FORTALEZA_PALETTE: ZonePalette = {
+  skyTop: '#120508',
+  skyHorizon: '#6a2418',
+  fog: '#3a1712',
+  fogDensity: 0.024,
+  sun: '#ffc48a',
+  sunIntensity: 0.62,
+  hemiSky: '#c48a78',
+  hemiGround: '#1f0f10',
+  hemiIntensity: 0.68,
+  ground: '#4a3532',
+  groundFar: '#422f2c',
+  path: '#6b4a38',
+  wall: '#4a3532',
+  trunk: '#241716',
+  foliage: ['#5a2420', '#7a3a22', '#a8682a'],
+  rock: '#4a3836',
+  crystal: '#ffcf6a',
+  outline: '#120808',
+  crack: '#0c0404',
+  motes: '#ffb05a',
+  stone: '#4c3a38',
+  shaft: '#ff8a4a',
 };
 
 /** Cueva de Prisma: oscuridad violeta y cristales que dan la luz. */

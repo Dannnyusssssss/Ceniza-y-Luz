@@ -20,8 +20,10 @@ export const TEXTS = {
     noGraphics:
       'Tu navegador no puede mostrar gráficos 3D (WebGL2 o WebGPU no están disponibles). Prueba con un navegador de escritorio actualizado o activa la aceleración por hardware.',
     contextLost: 'Se perdió el acceso a la tarjeta gráfica. Intentando recuperarlo…',
-    contextRestored: 'Gráficos recuperados.',
-    startFailed: 'No se pudo iniciar el juego. Recarga la página para intentarlo de nuevo.',
+    contextFailed:
+      'No se pudo recuperar la tarjeta gráfica. Recarga la página: tu partida sigue guardada desde el último faro.',
+    startFailed:
+      'No se pudo iniciar el juego. Comprueba tu conexión y recarga la página para intentarlo de nuevo.',
   },
   loading: {
     /** Se muestra con el porcentaje cargado. */
@@ -83,6 +85,7 @@ export const TEXTS = {
     quality: 'Calidad gráfica',
     qualityOptions: { low: 'Baja', medium: 'Media', high: 'Alta' },
     music: 'Música',
+    dynamicResolution: 'Resolución dinámica (la baja un poco si el juego va por debajo de 50 FPS)',
     fpsLimit: 'Límite de FPS',
     fpsLimitOptions: {
       auto: 'Automático (recomendado)',
@@ -128,6 +131,8 @@ export const TEXTS = {
     bossLife: (name: string, life: number, max: number) => `${name} · Vida: ${life} / ${max}`,
     bossArmor: 'Con coraza: rómpela con el Impulso',
     bossStagger: 'Coraza rota: ¡ahora!',
+    bossVeil: (lit: number, total: number) => `Velo: braseros con Q (${lit} de ${total})`,
+    bossVeilBroken: 'Velo roto: ¡ahora!',
   },
   death: {
     title: 'Has caído',
@@ -156,6 +161,7 @@ export const TEXTS = {
     switchStone: (symbol: string) => `Activar la piedra ${symbol}`,
     block: 'Empujar el bloque',
     reset: 'Devolver el bloque a su sitio',
+    rescue: (name: string) => `Liberar a ${name}`,
   },
   symbols: { sol: 'del Sol', luna: 'de la Luna', estrella: 'de la Estrella' },
   world: {
@@ -164,6 +170,7 @@ export const TEXTS = {
       bosque: 'Bosque de Luciérnagas',
       cienaga: 'Ciénaga de Ecos',
       cueva: 'Cueva de Prisma',
+      fortaleza: 'Fortaleza del Eclipse',
       arena: 'Arena de práctica',
     } satisfies Record<ZoneId, string>,
     chest: {
@@ -193,7 +200,6 @@ export const TEXTS = {
       boss: 'No cede mientras el Guardián siga en pie.',
       shatter: 'Cristal macizo. No se abre: hay que romperlo con el Impulso.',
     },
-    fortressClosed: 'Aún no hay paso. El camino a la Fortaleza del Eclipse sigue cerrado.',
     abilityLearned: {
       pulso:
         'Has aprendido el Pulso de Luz. Pulsa Q para lanzarlo: hiere de lejos y enciende antorchas y prismas.',
@@ -212,6 +218,26 @@ export const TEXTS = {
         sweep: 'Barrido: apártate del frente',
         spikes: 'Púas: sal de los círculos',
         shards: 'Fragmentos: esquiva o córtalos',
+      },
+    },
+    regent: {
+      awake: 'El Regente del Eclipse alza su hoja',
+      stage: {
+        2: '¡Un velo de Bruma cubre al Regente!',
+        3: '¡El eclipse empieza! La sala se oscurece',
+      },
+      blocked: 'El velo aguanta. Enciende los tres braseros con el Pulso (Q).',
+      brazier: (lit: number, total: number) => `Brasero encendido (${lit} de ${total}).`,
+      broken: '¡Velo roto! Golpea ahora.',
+      veilBack: 'El velo vuelve y los braseros se apagan.',
+      defeated: (name: string) => `El Regente se deshace en ceniza. Acércate al trono: ${name} te espera.`,
+      reset: 'El Regente vuelve a su sitio y recupera su vida.',
+      windup: {
+        sweep: 'Tajo: apártate del frente',
+        lunge: 'Estocada: sal de la línea',
+        volley: 'Ceniza: esquiva o córtala',
+        summon: 'Invoca a la Bruma',
+        rings: 'Anillos: esquívalos al cruzarlos',
       },
     },
     switchOk: 'Se enciende. Vas bien.',
@@ -237,7 +263,13 @@ export const TEXTS = {
     impulse: 'Aprende el Impulso en el altar de la sala del oeste.',
     crack: 'Cruza la gran grieta con el Impulso (R) y rompe la barrera de cristal del norte.',
     guardian: 'Vence al Guardián de Cristal.',
-    fortress: 'El Guardián ha caído. Busca lo que guardaba, al norte de la sala.',
+    fortress: 'El Guardián ha caído. Busca lo que guardaba y sigue al norte, hasta la Fortaleza del Eclipse.',
+    fortressBlocks:
+      'Lleva los dos bloques a las plataformas, al oeste del patio, para abrir la puerta de la galería.',
+    fortressBraziers: 'Cruza la grieta y enciende los braseros con el Pulso (Q), en el orden del mural.',
+    regent: 'Vence al Regente del Eclipse, en la sala del trono.',
+    rescue: 'Libera a tu gemelo, junto al trono.',
+    free: 'Tu gemelo está a salvo. Puedes seguir explorando lo que quieras.',
   },
   signs: {
     portal: 'Portal del Bosque. Cerrado hasta nueva orden de la guardiana. Quien salga, que salga armado.',
@@ -261,9 +293,24 @@ export const TEXTS = {
     grieta: 'Grieta sin fondo. A pie no se cruza. Con el Impulso (R), desde el borde, se llega al otro lado.',
     cristal: 'Barrera de cristal. Lánzate contra ella con el Impulso (R) y cederá.',
     guardian: 'Detrás del cristal duerme el Guardián. Descansa antes en el faro: si caes, volverás aquí.',
-    fortaleza:
-      'Más allá, la Fortaleza del Eclipse. Este paso aún no se puede cruzar: la historia continúa más adelante.',
+    fortaleza: 'Más allá, la Fortaleza del Eclipse. Quien entra no sale igual. Descansa antes de cruzar.',
+    fortalezaBloques:
+      'Dos bloques, dos plataformas. Cuando las dos estén cubiertas, la puerta de la galería se abrirá. La piedra de la entrada devuelve los bloques a su sitio.',
+    fortalezaGrieta: 'La roca se partió aquí hace mucho. Con el Impulso (R), desde el borde, se cruza.',
+    fortalezaBraseros:
+      'El mural guarda el orden: de arriba abajo. Lanza el Pulso (Q) a cada brasero desde la orilla.',
+    fortalezaTrono:
+      'Tras esta puerta, el trono. Descansa en el faro: si caes, volverás aquí. Dicen que su velo teme a la luz de los braseros.',
   } satisfies Record<SignTextId, string>,
+  credits: {
+    title: 'Fin',
+    thanks: 'Gracias por jugar.',
+    made: 'Un juego de Danny Sivinta.',
+    art: 'Historia, personajes, modelos, música y sonidos creados para este juego.',
+    tech: 'Hecho con Babylon.js (licencia Apache 2.0). Los avisos de licencia acompañan al juego.',
+    saved: 'Tu partida queda guardada: «Continuar» te devuelve al último faro para seguir explorando.',
+    close: 'Volver al inicio',
+  },
   shop: {
     title: 'Tienda de Oren',
     sparks: (n: number) => `Tienes ${n} chispas`,
@@ -327,7 +374,9 @@ export const TEXTS = {
 } as const;
 
 /** Lo que dice cada aldeano, antes y después de tomar la Hoja. Cambia con la voz del personaje elegido. */
-export const DIALOGUES: Readonly<Record<NpcId, { readonly before: Dialogue; readonly after: Dialogue }>> = {
+export const DIALOGUES: Readonly<
+  Record<NpcId, { readonly before: Dialogue; readonly after: Dialogue; readonly finished: Dialogue }>
+> = {
   ilse: {
     before: [
       { speaker: 'ilse', text: 'Te he visto levantarte. Bien. Lumbre aún respira, y tú también.' },
@@ -354,6 +403,12 @@ export const DIALOGUES: Readonly<Record<NpcId, { readonly before: Dialogue; read
         text: 'Si caes, los faros te traerán de vuelta. Descansa en ellos: guardan lo que has hecho y curan lo que te han hecho.',
       },
     ],
+    finished: [
+      {
+        speaker: 'ilse',
+        text: 'La niebla se ha levantado de los montes. Hacía años que no veía el valle entero. Gracias.',
+      },
+    ],
   },
   oren: {
     before: [
@@ -367,6 +422,12 @@ export const DIALOGUES: Readonly<Record<NpcId, { readonly before: Dialogue; read
       {
         speaker: 'oren',
         text: 'Vaya, la Hoja. Con eso sacarás chispas de la Bruma: a mí me sirven igual que las de siempre.',
+      },
+    ],
+    finished: [
+      {
+        speaker: 'oren',
+        text: 'Sin Bruma se vende menos poción. Tranquilidad, sí; negocio, no. Pasa y mira.',
       },
     ],
   },
@@ -394,8 +455,76 @@ export const DIALOGUES: Readonly<Record<NpcId, { readonly before: Dialogue; read
         text: 'Tráelo de vuelta, ¿vale? Y ten cuidado con las piedras del bosque: dicen que hay que tocarlas en orden.',
       },
     ],
+    finished: [
+      {
+        speaker: 'teo',
+        text: {
+          alba: '¡Has traído a Ciro! Ya me ha contado tres veces lo de la Fortaleza, y cada vez es más larga.',
+          ciro: '¡Has traído a Alba! Dice que la próxima vez no la dejes sola tanto rato.',
+        },
+      },
+    ],
   },
 };
+
+/** El final, plano a plano. La usa `data/intro.ts`. Los hechos son los mismos; cambia quién los vive. */
+export const ENDING_LINES = {
+  freed: [
+    {
+      speaker: 'narrator',
+      text: {
+        alba: 'La Bruma que retenía a Ciro se abrió como una mano cansada, y Alba corrió los últimos pasos.',
+        ciro: 'La Bruma que retenía a Alba se abrió como una mano cansada, y Ciro corrió los últimos pasos.',
+      },
+    },
+    {
+      speaker: 'sibling',
+      text: {
+        alba: 'Alba… sabía que vendrías. Te oía golpear puertas desde aquí arriba.',
+        ciro: 'Ciro… has tardado. Pensaba escaparme yo sola la semana que viene.',
+      },
+    },
+    {
+      speaker: 'player',
+      text: {
+        alba: '¿Puedes andar? Agárrate. No pienso soltarte otra vez.',
+        ciro: 'Yo también me alegro de verte. ¿Puedes andar?',
+      },
+    },
+  ],
+  together: [
+    {
+      speaker: 'sibling',
+      text: {
+        alba: 'Esa voz… decía que la ceniza era lo único que dura. Que todo lo demás se apaga.',
+        ciro: 'Esa voz… decía que la ceniza era lo único que dura. Que todo lo demás se apaga.',
+      },
+    },
+    {
+      speaker: 'player',
+      text: {
+        alba: 'Pues se equivocaba. La ceniza también se la lleva el viento. Vamos a casa.',
+        ciro: 'Se equivocaba. Debajo de la ceniza siempre queda una brasa. Vamos a casa.',
+      },
+    },
+    { speaker: 'narrator', text: 'Con el Regente caído, la Bruma empezó a retirarse de los montes.' },
+  ],
+  home: [
+    { speaker: 'narrator', text: 'Amanecía cuando los gemelos cruzaron el portal de Lumbre.' },
+    { speaker: 'ilse', text: 'Los dos. En pie. Eso sí que no me lo esperaba tan pronto.' },
+    {
+      speaker: 'sibling',
+      text: {
+        alba: 'Alba, ¿discutimos ya, o esperamos al desayuno?',
+        ciro: 'Ciro, ¿discutimos ya, o esperamos al desayuno?',
+      },
+    },
+    {
+      speaker: 'narrator',
+      text: 'La Hoja de Luz volvió al santuario, aunque nadie la miraría igual. Y Lumbre, por fin, durmió tranquila.',
+    },
+  ],
+} as const satisfies Readonly<Record<string, Dialogue>>;
 
 /** La intro, plano a plano. La usa `data/intro.ts`. */
 export const INTRO_LINES = {

@@ -32,5 +32,6 @@ export function lineTextFor(text: LineText, character: CharacterId): string {
 /** Lo que dice un aldeano según cómo va la aventura. */
 export function pickDialogue(npc: NpcId, progress: Progress): Dialogue {
   const set = DIALOGUES[npc];
+  if (hasFlag(progress, 'gameCompleted')) return set.finished;
   return hasFlag(progress, 'bladeTaken') ? set.after : set.before;
 }

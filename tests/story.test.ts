@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from '../src/core/rng';
-import { INTRO_SHOTS } from '../src/data/intro';
+import { HOME_SHOTS, INTRO_SHOTS, RESCUE_SHOTS } from '../src/data/intro';
 import { NPC_IDS, NPCS } from '../src/data/npcs';
 import { DIALOGUES, TEXTS, type Dialogue } from '../src/data/texts';
 import { STORY_ZONES, ZONES } from '../src/data/zones';
@@ -51,12 +51,16 @@ describe('diálogos', () => {
     expect(pickDialogue('ilse', p)).toBe(DIALOGUES.ilse.before);
     p.flags.push('bladeTaken');
     expect(pickDialogue('ilse', p)).toBe(DIALOGUES.ilse.after);
+    p.flags.push('gameCompleted');
+    expect(pickDialogue('ilse', p)).toBe(DIALOGUES.ilse.finished);
   });
 
   it('todos tienen algo que decir, con texto para los dos gemelos', () => {
     const all: Dialogue[] = [
-      ...NPC_IDS.flatMap((id) => [DIALOGUES[id].before, DIALOGUES[id].after]),
+      ...NPC_IDS.flatMap((id) => [DIALOGUES[id].before, DIALOGUES[id].after, DIALOGUES[id].finished]),
       ...INTRO_SHOTS.map((s) => s.lines),
+      ...RESCUE_SHOTS.map((s) => s.lines),
+      ...HOME_SHOTS.map((s) => s.lines),
     ];
     for (const dialogue of all) {
       expect(dialogue.length).toBeGreaterThan(0);
@@ -64,6 +68,16 @@ describe('diálogos', () => {
         expect(lineTextFor(line.text, 'alba').length).toBeGreaterThan(0);
         expect(lineTextFor(line.text, 'ciro').length).toBeGreaterThan(0);
       }
+    }
+  });
+
+  it('el final nombra al gemelo correcto según a quién se eligió', () => {
+    const freed = RESCUE_SHOTS[0]?.lines[0]?.text ?? '';
+    expect(lineTextFor(freed, 'alba')).toContain('retenía a Ciro');
+    expect(lineTextFor(freed, 'ciro')).toContain('retenía a Alba');
+    for (const shot of [...RESCUE_SHOTS, ...HOME_SHOTS]) {
+      expect(shot.sibling).not.toBeNull();
+      expect(shot.creatures).toBe(false);
     }
   });
 
@@ -125,6 +139,16 @@ describe('objetivo actual', () => {
     expect(currentObjective(p)).toBe('guardian');
     p.bosses.push('guardian');
     expect(currentObjective(p)).toBe('fortress');
+    p.place = { zone: 'fortaleza', entry: 'fromCueva' };
+    expect(currentObjective(p)).toBe('fortressBlocks');
+    p.puzzles.push('fortaleza-bloques');
+    expect(currentObjective(p)).toBe('fortressBraziers');
+    p.puzzles.push('fortaleza-braseros');
+    expect(currentObjective(p)).toBe('regent');
+    p.bosses.push('regente');
+    expect(currentObjective(p)).toBe('rescue');
+    p.flags.push('gameCompleted');
+    expect(currentObjective(p)).toBe('free');
   });
 });
 

@@ -17,7 +17,12 @@ export type ObjectiveId =
   | 'impulse'
   | 'crack'
   | 'guardian'
-  | 'fortress';
+  | 'fortress'
+  | 'fortressBlocks'
+  | 'fortressBraziers'
+  | 'regent'
+  | 'rescue'
+  | 'free';
 
 export function currentObjective(progress: Progress): ObjectiveId {
   const { puzzles, chests, gates, abilities, bosses } = progress;
@@ -36,5 +41,10 @@ export function currentObjective(progress: Progress): ObjectiveId {
   if (!abilities.includes('impulso')) return 'impulse';
   if (!gates.includes('cueva-cristal')) return 'crack';
   if (!bosses.includes('guardian')) return 'guardian';
-  return 'fortress';
+  if (!puzzles.includes('fortaleza-bloques')) {
+    return progress.place.zone === 'fortaleza' ? 'fortressBlocks' : 'fortress';
+  }
+  if (!puzzles.includes('fortaleza-braseros')) return 'fortressBraziers';
+  if (!bosses.includes('regente')) return 'regent';
+  return hasFlag(progress, 'gameCompleted') ? 'free' : 'rescue';
 }

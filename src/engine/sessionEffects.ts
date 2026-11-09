@@ -2,6 +2,7 @@ import type { Music } from '../audio/music';
 import type { Sfx } from '../audio/sfx';
 import type { AdventureEvent } from '../game/adventure';
 import type { GuardianEvent, GuardianState } from '../game/guardian';
+import type { RegentEvent, RegentState } from '../game/regent';
 import type { CombatFeedback } from './combatFeedback';
 import type { SessionView } from './sessionView';
 
@@ -54,6 +55,9 @@ export function playAdventureEffects(t: EffectTargets, e: AdventureEvent): void 
     case 'puzzleReset':
       t.sfx.play('click');
       break;
+    case 'rescue':
+      t.sfx.play('solved');
+      break;
     case 'rest':
       break;
   }
@@ -103,6 +107,56 @@ export function playGuardianEffects(
       t.sfx.play('solved');
       break;
     case 'guardianReset':
+      t.music.setBoss(false);
+      break;
+  }
+}
+
+/** Efectos de lo que hace el Regente. Toda señal sonora tiene también señal visual: zonas en el suelo y avisos. */
+export function playRegentEffects(t: EffectTargets, regent: RegentState | null, e: RegentEvent): void {
+  switch (e.type) {
+    case 'regentAwake':
+      t.sfx.play('bossStage');
+      t.music.setBoss(true);
+      break;
+    case 'regentStage':
+      t.sfx.play('bossStage');
+      break;
+    case 'regentWindup':
+      t.sfx.play('bossWarn', ['sweep', 'lunge', 'volley', 'summon', 'rings'].indexOf(e.attack));
+      break;
+    case 'regentStrike':
+      if (e.attack === 'sweep' || e.attack === 'lunge') {
+        t.sfx.play('slam');
+        t.feedback.shake();
+      }
+      break;
+    case 'regentHit':
+      t.sfx.play('hit');
+      if (t.feedback.tryFlash()) t.view.flashRegent();
+      break;
+    case 'regentBlocked':
+      t.sfx.play('wrong');
+      break;
+    case 'regentBrazierLit':
+      t.sfx.play('click');
+      break;
+    case 'regentVeilBroken':
+      t.sfx.play('shatter');
+      t.feedback.shake();
+      if (regent) t.view.encounterView.burst(regent.x, regent.z, t.reduceMotion);
+      break;
+    case 'regentVeilBack':
+      t.sfx.play('warn', 2);
+      break;
+    case 'regentDying':
+      t.sfx.play('kill');
+      t.music.setBoss(false);
+      break;
+    case 'regentDefeated':
+      t.sfx.play('solved');
+      break;
+    case 'regentReset':
       t.music.setBoss(false);
       break;
   }

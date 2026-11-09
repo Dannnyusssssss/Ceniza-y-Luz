@@ -2,6 +2,7 @@ import { createRng } from '../core/rng';
 import {
   BEATS_PER_BAR,
   BOSS_MUSIC,
+  FINAL_BOSS_MUSIC,
   MUSIC_FADE,
   MUSIC_VOLUME,
   ZONE_MUSIC,
@@ -13,16 +14,14 @@ import { beatSeconds, composeBar, midiToHz, type MusicNote } from './musicPatter
 /** Cada cuánto se programan más notas, y con cuánta antelación (s). */
 const TICK_MS = 250;
 const LOOKAHEAD = 0.6;
-const NOISE_SECONDS = 2;
 
 /**
- * Música y ambiente generados con WebAudio, sin archivos. Se apoya en la salida de los efectos: el silencio global
+ * Música generada con WebAudio, sin archivos. Se apoya en la salida de los efectos: el silencio global
  * y el compresor la cubren. Es solo acompañamiento: ningún aviso del juego depende de ella.
  */
 export class Music {
   private output: { readonly ctx: AudioContext; readonly out: AudioNode } | null = null;
   private bus: GainNode | null = null;
-  private ambience: { source: AudioBufferSourceNode; filter: BiquadFilterNode; gain: GainNode } | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private enabled = true;
   private paused = false;
@@ -43,18 +42,7 @@ export class Music {
     bus.gain.value = 0;
     bus.connect(out);
     this.bus = bus;
-    const source = ctx.createBufferSource();
-    source.buffer = makeNoise(ctx);
-    source.loop = true;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    const gain = ctx.createGain();
-    gain.gain.value = 0;
-    source.connect(filter).connect(gain).connect(bus);
-    source.start();
-    this.ambience = { source, filter, gain };
     this.nextBarAt = ctx.currentTime + 0.1;
-    this.applyTrack();
     this.applyVolume();
     this.timer = setInterval(() => this.schedule(), TICK_MS);
   }
@@ -88,14 +76,8 @@ export class Music {
   }
 
   private applyTrack(): void {
-    this.track = this.boss ? BOSS_MUSIC : ZONE_MUSIC[this.zone];
-    if (!this.output || !this.ambience) return;
-    const now = this.output.ctx.currentTime;
-    const { filter, gain } = this.ambience;
-    const a = this.track.ambience;
-    filter.frequency.setTargetAtTime(a.frequency, now, MUSIC_FADE / 3);
-    filter.Q.setTargetAtTime(a.q, now, MUSIC_FADE / 3);
-    gain.gain.setTargetAtTime(a.volume, now, MUSIC_FADE / 3);
+    const bossTrack = this.zone === 'fortaleza' ? FINAL_BOSS_MUSIC : BOSS_MUSIC;
+    this.track = this.boss ? bossTrack : ZONE_MUSIC[this.zone];
   }
 
   private schedule(): void {
@@ -138,22 +120,8 @@ export class Music {
   dispose(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
-    this.ambience?.source.stop();
-    this.ambience = null;
     this.bus?.disconnect();
     this.bus = null;
     this.output = null;
   }
-}
-
-function makeNoise(ctx: AudioContext): AudioBuffer {
-  const length = Math.floor(ctx.sampleRate * NOISE_SECONDS);
-  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  let seed = 777;
-  for (let i = 0; i < length; i++) {
-    seed = (seed * 16807) % 2147483647;
-    data[i] = (seed / 2147483647) * 2 - 1;
-  }
-  return buffer;
 }

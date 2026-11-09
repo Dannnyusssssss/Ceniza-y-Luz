@@ -1,8 +1,10 @@
 import { GUARDIAN } from '../data/guardian';
+import { REGENT } from '../data/regent';
 import type { AbilityState } from '../game/abilities';
 import type { Interactable } from '../game/adventure';
 import { aliveEnemies, type EncounterState } from '../game/encounter';
 import { isGuardianActive, type GuardianState } from '../game/guardian';
+import { isRegentActive, type RegentState } from '../game/regent';
 import { currentObjective, type ObjectiveId } from '../game/objectives';
 import type { PlayerState } from '../game/player';
 import type { Progress } from '../game/progress';
@@ -40,6 +42,9 @@ export interface HudSnapshot {
     readonly maxHealth: number;
     readonly armored: boolean;
     readonly staggered: boolean;
+    /** El velo del Regente: cuántos braseros van encendidos. Null en el resto de los casos. */
+    readonly veil: { readonly lit: number; readonly total: number } | null;
+    readonly isRegent: boolean;
   } | null;
 }
 
@@ -51,10 +56,11 @@ export function buildHudSnapshot(s: {
   readonly zone: ZoneData;
   readonly abilities: AbilityState;
   readonly guardian: GuardianState | null;
+  readonly regent: RegentState | null;
   readonly prompt: Interactable | null;
   readonly arena: boolean;
 }): HudSnapshot {
-  const { encounter: e, progress, player, zone, abilities, guardian: g, arena } = s;
+  const { encounter: e, progress, player, zone, abilities, guardian: g, regent: r, arena } = s;
   const dummy = zone.dummy;
   return {
     quarters: e.health.quarters,
@@ -71,14 +77,26 @@ export function buildHudSnapshot(s: {
     pulseWait: progress.abilities.includes('pulso') ? abilities.pulseCooldown : null,
     dashWait: progress.abilities.includes('impulso') ? abilities.dashCooldown : null,
     boss:
-      g && isGuardianActive(g)
+      r && isRegentActive(r)
         ? {
-            name: GUARDIAN.name,
-            health: g.health,
-            maxHealth: GUARDIAN.maxHealth,
-            armored: g.armored,
-            staggered: g.phase === 'stagger',
+            name: REGENT.name,
+            health: r.health,
+            maxHealth: REGENT.maxHealth,
+            armored: r.veiled,
+            staggered: r.phase === 'stagger',
+            veil: r.veiled ? { lit: r.braziers.filter(Boolean).length, total: r.braziers.length } : null,
+            isRegent: true,
           }
-        : null,
+        : g && isGuardianActive(g)
+          ? {
+              name: GUARDIAN.name,
+              health: g.health,
+              maxHealth: GUARDIAN.maxHealth,
+              armored: g.armored,
+              staggered: g.phase === 'stagger',
+              veil: null,
+              isRegent: false,
+            }
+          : null,
   };
 }

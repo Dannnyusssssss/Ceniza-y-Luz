@@ -1,5 +1,5 @@
 import type { Dialogue } from './texts';
-import { INTRO_LINES } from './texts';
+import { ENDING_LINES, INTRO_LINES } from './texts';
 
 /** Dónde está y hacia dónde mira alguien en un plano. */
 export interface IntroActor {
@@ -32,6 +32,8 @@ export interface IntroShot {
   readonly creatures: boolean;
   /** Ceniza por segundo. */
   readonly ash: number;
+  /** Alrededor de dónde cae la ceniza; por defecto, la plaza de Lumbre. */
+  readonly ashAt?: { readonly x: number; readonly z: number };
   readonly lines: Dialogue;
 }
 
@@ -92,5 +94,47 @@ export const INTRO_SHOTS: readonly IntroShot[] = [
     creatures: false,
     ash: 6,
     lines: INTRO_LINES.after,
+  },
+];
+
+const THRONE_ASH = { x: 0, z: 37 };
+
+/** El rescate, en la sala del trono: la Bruma se deshace alrededor de los dos gemelos. */
+export const RESCUE_SHOTS: readonly IntroShot[] = [
+  {
+    camera: { x: -0.3, y: 1.55, z: 33.6, tx: 0, ty: 1.15, tz: 38.8 },
+    player: { x: -1, z: 38.2, yaw: 0.91 },
+    playerDown: false,
+    sibling: { x: 1, z: 39.6, yaw: -2.23 },
+    siblingTaken: false,
+    creatures: false,
+    ash: 26,
+    ashAt: THRONE_ASH,
+    lines: ENDING_LINES.freed,
+  },
+  {
+    camera: { x: 3.2, y: 1.5, z: 36.6, tx: 0, ty: 1.25, tz: 38.7 },
+    player: { x: -0.7, z: 38.4, yaw: 1.2 },
+    playerDown: false,
+    sibling: { x: 0.7, z: 38.8, yaw: -1.94 },
+    siblingTaken: false,
+    creatures: false,
+    ash: 10,
+    ashAt: THRONE_ASH,
+    lines: ENDING_LINES.together,
+  },
+];
+
+/** La vuelta a casa: amanece en la plaza de Lumbre. */
+export const HOME_SHOTS: readonly IntroShot[] = [
+  {
+    camera: { x: 0.4, y: 1.9, z: -11.5, tx: 0, ty: 1.2, tz: -3 },
+    player: { x: -0.8, z: -5.6, yaw: 2.9 },
+    playerDown: false,
+    sibling: { x: 0.8, z: -5.6, yaw: -2.9 },
+    siblingTaken: false,
+    creatures: false,
+    ash: 0,
+    lines: ENDING_LINES.home,
   },
 ];

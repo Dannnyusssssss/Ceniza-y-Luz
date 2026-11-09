@@ -36,7 +36,7 @@ Oculto por defecto. Se muestra y se oculta con **F3** en cualquier pantalla. Se 
 | Mallas activas     | Mallas que pasaron el recorte de cámara en el último fotograma.                          |
 | Motor              | `webgpu` o `webgl2`.                                                                     |
 | Calidad            | Nivel de calidad gráfica en uso (Baja, Media o Alta).                                    |
-| Resolución interna | Píxeles que dibuja el motor en cada imagen.                                              |
+| Resolución interna | Píxeles que dibuja el motor en cada imagen. Baja si actúa la resolución dinámica.        |
 | Gráfica            | Gráfica que informa el navegador. Puede ser poco detallada y no se envía a ningún sitio. |
 
 Presupuesto por zona: 4 luces como máximo, un generador de sombras y 150 llamadas de dibujo.

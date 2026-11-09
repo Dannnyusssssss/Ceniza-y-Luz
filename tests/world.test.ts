@@ -3,6 +3,7 @@ import type { BlockData } from '../src/data/arena';
 import { PLAYER_BALANCE } from '../src/data/balance';
 import { ABILITY_BALANCE } from '../src/data/items';
 import { PUZZLES } from '../src/data/puzzles';
+import { REGENT } from '../src/data/regent';
 import { STORY_ZONES, ZONES, type ZoneData, type ZoneId } from '../src/data/zones';
 import { planDash } from '../src/game/abilities';
 import { createAdventure, refreshBlocks } from '../src/game/adventure';
@@ -369,6 +370,58 @@ describe('se puede recorrer el mundo', () => {
       if (s.id !== 'cueva-cartel-prismas' && s.id !== 'cueva-cartel-grieta') {
         expect(canReach(seen, s.x, s.z, 1.6), s.id).toBe(true);
       }
+    }
+  });
+
+  it('en la Fortaleza cada tramo se abre con lo suyo y la sala del trono queda al final', () => {
+    const zone = ZONES.fortaleza;
+    const progress = createProgress('alba');
+    const adventure = createAdventure(progress, 'fortaleza');
+    const south = start('fortaleza', 'fromCueva');
+    const north = start('fortaleza', 'galeria');
+    const boss = zone.boss;
+    const rescue = zone.rescue;
+    if (!boss || !rescue) throw new Error('falta la sala del trono');
+    const seenFrom = (p: { x: number; z: number }): Set<string> => {
+      refreshBlocks(adventure);
+      return reachable(zone, adventure.blocks, p.x, p.z);
+    };
+    // Sin resolver el puzzle del patio no se llega a la grieta.
+    let seen = seenFrom(south);
+    expect(canReach(seen, 0, -6, 1)).toBe(false);
+    progress.gates.push('fortaleza-galeria');
+    seen = seenFrom(south);
+    expect(canReach(seen, 0, -6, 1)).toBe(true);
+    // A pie no se pasa de la grieta.
+    expect(canReach(seen, north.x, north.z, 1)).toBe(false);
+    // Del otro lado, la puerta del trono sigue cerrada hasta encender los braseros.
+    seen = seenFrom(north);
+    expect(canReach(seen, boss.x, boss.z, 1)).toBe(false);
+    progress.gates.push('fortaleza-trono');
+    seen = seenFrom(north);
+    expect(canReach(seen, boss.x, boss.z, 1)).toBe(true);
+    expect(canReach(seen, rescue.x, rescue.z, 2.4)).toBe(true);
+    for (const b of REGENT.braziers) expect(canReach(seen, b.x, b.z, 2)).toBe(true);
+    for (const s of zone.signs) {
+      const side = s.z > -1 ? seen : seenFrom(south);
+      expect(canReach(side, s.x, s.z, 1.6), s.id).toBe(true);
+    }
+    for (const c of zone.chests) {
+      const side = c.z > -1 ? seen : seenFrom(south);
+      expect(canReach(side, c.x, c.z, 1.8), c.id).toBe(true);
+    }
+  });
+
+  it('en la Fortaleza el Impulso cruza la grieta en los dos sentidos', () => {
+    const blocks = createAdventure(createProgress('alba'), 'fortaleza').blocks;
+    const r = PLAYER_BALANCE.radius;
+    expect(planDash(0, -3.7 - r, 0, 1, r, blocks).z).toBeGreaterThan(-0.3 + r - 0.01);
+    expect(planDash(0, -0.3 + r, 0, -1, r, blocks).z).toBeLessThan(-3.7 - r + 0.01);
+  });
+
+  it('cada brasero del Regente es un bloque sólido de la zona', () => {
+    for (const b of REGENT.braziers) {
+      expect(ZONES.fortaleza.blocks.some((k) => k.x === b.x && k.z === b.z)).toBe(true);
     }
   });
 

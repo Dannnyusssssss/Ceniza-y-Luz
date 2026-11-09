@@ -12,8 +12,6 @@ export interface MusicTrack {
   readonly chords: readonly number[];
   /** Probabilidad de que suene una nota en cada pulso de la melodía. */
   readonly density: number;
-  /** Filtro del ambiente (Hz) y su volumen: viento, agua o eco de cueva. */
-  readonly ambience: { readonly frequency: number; readonly q: number; readonly volume: number };
   /** Volumen del fondo y de la melodía. */
   readonly padVolume: number;
   readonly melodyVolume: number;
@@ -30,7 +28,6 @@ export const ZONE_MUSIC: Readonly<Record<ZoneId, MusicTrack>> = {
     tempo: 72,
     chords: [0, 3, 1, 4],
     density: 0.4,
-    ambience: { frequency: 900, q: 0.4, volume: 0.012 },
     padVolume: 0.05,
     melodyVolume: 0.07,
   },
@@ -40,7 +37,6 @@ export const ZONE_MUSIC: Readonly<Record<ZoneId, MusicTrack>> = {
     tempo: 84,
     chords: [0, 2, 4, 3],
     density: 0.5,
-    ambience: { frequency: 2200, q: 0.5, volume: 0.012 },
     padVolume: 0.045,
     melodyVolume: 0.07,
   },
@@ -50,7 +46,6 @@ export const ZONE_MUSIC: Readonly<Record<ZoneId, MusicTrack>> = {
     tempo: 58,
     chords: [0, 3, 0, 2],
     density: 0.28,
-    ambience: { frequency: 420, q: 0.8, volume: 0.024 },
     padVolume: 0.06,
     melodyVolume: 0.06,
   },
@@ -60,9 +55,17 @@ export const ZONE_MUSIC: Readonly<Record<ZoneId, MusicTrack>> = {
     tempo: 52,
     chords: [0, 5, 3, 4],
     density: 0.22,
-    ambience: { frequency: 1500, q: 3, volume: 0.012 },
     padVolume: 0.06,
     melodyVolume: 0.065,
+  },
+  fortaleza: {
+    root: 48,
+    scale: NATURAL_MINOR,
+    tempo: 60,
+    chords: [0, 5, 4, 3],
+    density: 0.26,
+    padVolume: 0.065,
+    melodyVolume: 0.06,
   },
   arena: {
     root: 55,
@@ -70,7 +73,6 @@ export const ZONE_MUSIC: Readonly<Record<ZoneId, MusicTrack>> = {
     tempo: 96,
     chords: [0, 3, 2, 1],
     density: 0.45,
-    ambience: { frequency: 700, q: 0.4, volume: 0.008 },
     padVolume: 0.045,
     melodyVolume: 0.06,
   },
@@ -83,9 +85,19 @@ export const BOSS_MUSIC: MusicTrack = {
   tempo: 112,
   chords: [0, 0, 5, 4],
   density: 0.6,
-  ambience: { frequency: 300, q: 1, volume: 0.016 },
   padVolume: 0.07,
   melodyVolume: 0.075,
+};
+
+/** La lucha contra el Regente: más grave y más lenta que la del Guardián, con más peso. */
+export const FINAL_BOSS_MUSIC: MusicTrack = {
+  root: 43,
+  scale: NATURAL_MINOR,
+  tempo: 100,
+  chords: [0, 5, 3, 4],
+  density: 0.55,
+  padVolume: 0.075,
+  melodyVolume: 0.08,
 };
 
 /** Pulsos por compás y compases entre cambios de frase. */

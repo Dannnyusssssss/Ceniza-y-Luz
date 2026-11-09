@@ -125,6 +125,42 @@ export const PUZZLES: readonly PuzzleData[] = [
     order: ['prisma-luna', 'prisma-sol', 'prisma-estrella'],
     mural: { x: -4.5, z: -22, yaw: Math.PI / 2 },
   },
+  {
+    kind: 'blocks',
+    id: 'fortaleza-bloques',
+    zone: 'fortaleza',
+    origin: { x: -25, z: -36 },
+    cellSize: 2,
+    cols: 6,
+    rows: 6,
+    solids: [
+      [2, 4],
+      [3, 1],
+      [0, 2],
+    ],
+    blocks: [
+      [2, 1],
+      [3, 2],
+    ],
+    plates: [
+      [1, 4],
+      [4, 3],
+    ],
+    reset: { x: -12.5, z: -37.5 },
+  },
+  {
+    kind: 'sequence',
+    id: 'fortaleza-braseros',
+    zone: 'fortaleza',
+    piece: 'torch',
+    switches: [
+      { id: 'brasa-luna', symbol: 'luna', x: -15, z: 6 },
+      { id: 'brasa-sol', symbol: 'sol', x: 15, z: 6 },
+      { id: 'brasa-estrella', symbol: 'estrella', x: 6.5, z: 10.5 },
+    ],
+    order: ['brasa-sol', 'brasa-luna', 'brasa-estrella'],
+    mural: { x: -4.5, z: 3, yaw: Math.PI / 2 },
+  },
 ];
 
 const BY_ID = new Map(PUZZLES.map((p) => [p.id, p]));

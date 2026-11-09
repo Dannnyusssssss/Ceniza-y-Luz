@@ -32,6 +32,25 @@ export function createDialogueBox(view: DialogueView): { root: HTMLElement; focu
   return { root, focus: next };
 }
 
+/** Créditos del final. Se cierran solo cuando el jugador quiere. */
+export function createCreditsPanel(title: string, onClose: () => void): HTMLElement {
+  const t = TEXTS.credits;
+  return h(
+    'section',
+    { className: 'panel panel-wide credits', attrs: { 'aria-labelledby': 'credits-title' } },
+    [
+      h('h2', { className: 'title', text: t.title, attrs: { id: 'credits-title' } }),
+      h('p', { className: 'subtitle', text: title }),
+      h('p', { text: t.thanks }),
+      h('p', { text: t.made }),
+      h('p', { text: t.art }),
+      h('p', { text: t.tech }),
+      h('p', { className: 'hint', text: t.saved }),
+      button(t.close, onClose, 'btn btn-primary'),
+    ],
+  );
+}
+
 /** Tienda del mercader. Cada compra vuelve a dibujar la lista con los precios y límites al día. */
 export function createShopPanel(
   progress: Progress,

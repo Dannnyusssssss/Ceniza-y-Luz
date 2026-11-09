@@ -1,4 +1,5 @@
 import './styles.css';
+import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine';
 import { createEngine } from './engine/createEngine';
 import { DEFAULT_BACKEND, readBackendPreference } from './engine/backendPreference';
 import { GameSession } from './engine/session';
@@ -6,6 +7,7 @@ import { readGameMode } from './engine/gameMode';
 import { SaveSlot } from './engine/saveSlot';
 import { limitFrameRate } from './engine/frameRate';
 import { FrameLimiter, frameTarget } from './core/frameLimiter';
+import { ResolutionGovernor } from './core/resolutionGovernor';
 import { FixedStepLoop } from './core/loop';
 import { BrowserInput, type InputCallbacks } from './core/input';
 import { SafeStorage } from './core/storage';
@@ -13,7 +15,7 @@ import { SettingsStore } from './core/settingsStore';
 import { App } from './ui/app';
 import { Hud } from './ui/hud';
 import { DebugOverlay } from './ui/debug';
-import { FPS_LIMIT_TARGET, IDLE_FPS_TARGET } from './data/settings';
+import { CONTEXT_RESTORE_SECONDS, FPS_LIMIT_TARGET, IDLE_FPS_TARGET } from './data/settings';
 import { TEXTS } from './data/texts';
 import { META } from './data/meta';
 
@@ -77,6 +79,33 @@ function watchPixelRatio(onChange: () => void): void {
   listen();
 }
 
+/** Si se pierde la tarjeta gráfica: la partida se pausa y se avisa. Si no vuelve, se pide recargar. */
+function watchGraphicsContext(engine: AbstractEngine, onLost: () => void): void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  engine.onContextLostObservable.add(() => {
+    onLost();
+    showFatal(TEXTS.errors.contextLost);
+    timer = setTimeout(() => showFatal(TEXTS.errors.contextFailed), CONTEXT_RESTORE_SECONDS * 1000);
+  });
+  engine.onContextRestoredObservable.add(() => {
+    if (timer) clearTimeout(timer);
+    hideFatal();
+  });
+}
+
+/** La escala dinámica vuelve a la resolución completa al cambiar de calidad o al desactivarla. */
+function watchResolution(settings: SettingsStore): ResolutionGovernor {
+  const governor = new ResolutionGovernor();
+  let quality = settings.value.quality;
+  settings.onChange((s) => {
+    const changed = s.quality !== quality;
+    quality = s.quality;
+    if ((changed || !s.dynamicResolution) && s.resolutionScale !== 1) settings.update({ resolutionScale: 1 });
+    if (changed) governor.reset();
+  });
+  return governor;
+}
+
 async function start(): Promise<void> {
   document.title = META.title;
   showLoading(0);
@@ -91,9 +120,6 @@ async function start(): Promise<void> {
   }
   const { engine, backend, gpu } = created;
   canvas.dataset['backend'] = backend;
-  engine.onContextLostObservable.add(() => showFatal(TEXTS.errors.contextLost));
-  engine.onContextRestoredObservable.add(() => hideFatal());
-
   const storage = SafeStorage.fromBrowser();
   const settings = new SettingsStore(storage, prefersReducedMotion());
   // La app se crea después de la entrada; los avisos de la entrada se le reenvían.
@@ -129,6 +155,7 @@ async function start(): Promise<void> {
     debug,
   );
   callbacks = app.inputCallbacks;
+  watchGraphicsContext(engine, () => app.pauseForError());
   // Solo en desarrollo: acceso desde la consola para probar la partida (ver docs/DEBUG.md).
   if (import.meta.env.DEV) Object.assign(window, { game: { session, app } });
   app.start();
@@ -136,6 +163,7 @@ async function start(): Promise<void> {
   limitFrameRate(engine, limiter, () =>
     frameTarget(FPS_LIMIT_TARGET[settings.value.fpsLimit], session.playing, IDLE_FPS_TARGET),
   );
+  const governor = watchResolution(settings);
   const loop = new FixedStepLoop();
   engine.runRenderLoop(() => {
     const frameSeconds = engine.getDeltaTime() / 1000;
@@ -145,6 +173,15 @@ async function start(): Promise<void> {
     const t1 = performance.now();
     session.world.scene.render();
     debug.record(t1 - t0, performance.now() - t1, frameSeconds);
+    if (session.playing && settings.value.dynamicResolution) {
+      const limit = FPS_LIMIT_TARGET[settings.value.fpsLimit];
+      const hz = limiter.refreshHz;
+      const top = limit === null ? hz : hz === null ? limit : Math.min(limit, hz);
+      const scale = governor.update(frameSeconds, settings.value.resolutionScale, top);
+      if (scale !== null) settings.update({ resolutionScale: scale });
+    } else {
+      governor.reset();
+    }
   });
   window.addEventListener('resize', () => engine.resize());
   watchPixelRatio(() => engine.resize());

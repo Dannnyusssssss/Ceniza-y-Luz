@@ -1,6 +1,7 @@
 import type { BlockData } from '../data/arena';
 import { ABILITY_BALANCE } from '../data/items';
 import { GUARDIAN } from '../data/guardian';
+import { REGENT } from '../data/regent';
 import { PLAYER_BALANCE } from '../data/balance';
 import type { Sfx } from '../audio/sfx';
 import {
@@ -15,6 +16,7 @@ import {
   updateCooldowns,
   updateDash,
   withoutCracks,
+  type AbilityState,
 } from '../game/abilities';
 import {
   lightPiece,
@@ -35,6 +37,14 @@ import {
   type GuardianEvent,
   type GuardianState,
 } from '../game/guardian';
+import {
+  hitRegent,
+  isRegentHittable,
+  lightBrazier,
+  pendingBraziers,
+  type RegentEvent,
+  type RegentState,
+} from '../game/regent';
 import { hurtPlayer, isDead } from '../game/health';
 import { cameraRelativeDirection, type PlayerState } from '../game/player';
 import { createProjectile } from '../game/projectiles';
@@ -50,6 +60,7 @@ export interface PowersContext {
   readonly combo: ComboState;
   readonly dummy: DummyState;
   readonly guardian: GuardianState | null;
+  readonly regent: RegentState | null;
   readonly cameraYaw: number;
   readonly damageSetting: DamageTaken;
   readonly invulnerable: boolean;
@@ -60,6 +71,7 @@ export interface PowersHooks {
   onEncounterEvents(events: readonly EncounterEvent[]): void;
   onAdventureEvents(events: readonly AdventureEvent[]): void;
   onGuardianEvents(events: readonly GuardianEvent[]): void;
+  onRegentEvents(events: readonly RegentEvent[]): void;
   onBurst(x: number, z: number): void;
   onDummyHit(dummy: DummyState): void;
   /** El golpe de la Hoja conectó con el jefe: pausa de impacto. */
@@ -85,12 +97,17 @@ export class PowersRunner {
 
   /** Lanza el Pulso hacia donde mira la cámara, con un ajuste suave hacia lo que tenga cerca de esa línea. */
   private tryPulse(ctx: PowersContext): boolean {
-    const { player: p, adventure, encounter, guardian } = ctx;
+    const { player: p, adventure, encounter, guardian, regent } = ctx;
     const targets: { x: number; z: number }[] = [
       ...pulseTargets(adventure),
       ...encounter.enemies.filter(isAlive),
     ];
     if (guardian && isGuardianHittable(guardian)) targets.push(guardian);
+    if (regent) {
+      // Con el velo puesto, lo que importa son los braseros: no el Regente.
+      targets.push(...pendingBraziers(regent));
+      if (isRegentHittable(regent) && !regent.veiled) targets.push(regent);
+    }
     const yaw = aimYaw(p.x, p.z, ctx.cameraYaw, targets);
     if (!firePulse(this.state, p.x, p.z, yaw)) return false;
     p.yaw = p.prevYaw = yaw;
@@ -160,7 +177,7 @@ export class PowersRunner {
 
   /** Mueve los disparos y resuelve lo que alcanzan. */
   stepPulses(ctx: PowersContext, dt: number, blocks: readonly BlockData[]): void {
-    const { encounter, guardian, adventure, dummy } = ctx;
+    const { encounter, guardian, regent, adventure, dummy } = ctx;
     if (this.state.pulses.length === 0) return;
     movePulses(this.state, dt, withoutCracks(blocks));
     const damage = Math.round(ABILITY_BALANCE.pulso.damage * templeFactor(adventure.progress.temple));
@@ -187,6 +204,7 @@ export class PowersRunner {
         this.hooks.onGuardianEvents(hitGuardian(guardian, damage, hitId));
         pulse.alive = false;
       }
+      if (regent) this.pulseAgainstRegent(pulse, regent, damage, hitId);
       for (const target of pulseTargets(adventure)) {
         if (!pulseTouches(pulse, target.x, target.z, 0.7)) continue;
         this.hooks.onAdventureEvents(lightPiece(adventure, target));
@@ -203,6 +221,25 @@ export class PowersRunner {
     }
     for (const end of prunePulses(this.state)) this.hooks.onBurst(end.x, end.z);
     if (events.length > 0) this.hooks.onEncounterEvents(events);
+  }
+
+  /** Un disparo en la sala del Regente: enciende un brasero o, si no, le alcanza a él. */
+  private pulseAgainstRegent(
+    pulse: AbilityState['pulses'][number],
+    regent: RegentState,
+    damage: number,
+    hitId: number,
+  ): void {
+    for (const brazier of pendingBraziers(regent)) {
+      if (!pulseTouches(pulse, brazier.x, brazier.z, 0.8)) continue;
+      this.hooks.onRegentEvents(lightBrazier(regent, brazier.index));
+      pulse.alive = false;
+      return;
+    }
+    if (isRegentHittable(regent) && pulseTouches(pulse, regent.x, regent.z, REGENT.radius)) {
+      this.hooks.onRegentEvents(hitRegent(regent, damage, hitId));
+      pulse.alive = false;
+    }
   }
 
   /** Un paso del combate contra el jefe: la Hoja, sus ataques y sus fragmentos. */

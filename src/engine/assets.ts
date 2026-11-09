@@ -13,6 +13,9 @@ export interface SessionAssets {
   readonly characters: Readonly<Record<CharacterId, LoadedModel>>;
   readonly enemies: Readonly<Record<EnemyKind, LoadedModel>>;
   readonly guardian: LoadedModel;
+  readonly regente: LoadedModel;
+  readonly brazier: LoadedModel;
+  readonly throne: LoadedModel;
   readonly props: PropModels;
 }
 
@@ -37,6 +40,9 @@ export async function loadAssets(
     'shrine',
     'crystalwall',
     'guardian',
+    'regente',
+    'brazier',
+    'throne',
     ...ENEMY_KINDS,
     ...NPC_IDS,
   ];
@@ -67,6 +73,9 @@ export async function loadAssets(
       tirador: get('tirador'),
     },
     guardian: get('guardian'),
+    regente: get('regente'),
+    brazier: get('brazier'),
+    throne: get('throne'),
     props: {
       chest: get('chest'),
       beacon: get('beacon'),

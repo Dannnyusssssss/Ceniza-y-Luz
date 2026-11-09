@@ -4,7 +4,7 @@
 
 Ceniza y Luz: todos los derechos reservados. Titular: Danny Sivinta.
 
-Los modelos 3D (personajes, enemigos y objetos) los crea el propio proyecto en Blender a partir de los scripts de `art/`; el entorno, los efectos y el sonido se generan por código. No se usan modelos, texturas, fuentes ni sonidos de terceros. Los archivos que produce Blender pertenecen al proyecto; la licencia de Blender no se aplica a ellos.
+Consulta el archivo `LICENSE` de la raíz. Los modelos 3D (personajes, enemigos y objetos) los crea el propio proyecto en Blender a partir de los scripts de `art/`; el entorno, los efectos y el sonido se generan por código. No se usan modelos, texturas, fuentes ni sonidos de terceros. Los archivos que produce Blender pertenecen al proyecto; la licencia de Blender no se aplica a ellos.
 
 ## Dependencias incluidas en el juego publicado
 
@@ -32,5 +32,7 @@ El build copia estos archivos a `dist/licenses/` de forma automática.
 | `prettier`               | 3.9.10  | MIT        |
 | `globals`                | 17.14.0 | MIT        |
 | `@types/node`            | 26.6.6  | MIT        |
+
+El despliegue usa las acciones oficiales de GitHub (`actions/checkout`, `actions/setup-node`, `actions/configure-pages`, `actions/upload-pages-artifact` y `actions/deploy-pages`), con licencia MIT, que no forman parte del juego.
 
 Para generar los modelos se usa Blender 5.2.3 LTS (GPL), instalado aparte; no forma parte del juego ni del repositorio.

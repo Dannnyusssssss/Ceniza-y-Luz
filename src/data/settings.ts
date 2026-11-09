@@ -10,6 +10,8 @@ export type FpsLimit = (typeof FPS_LIMITS)[number];
 
 /** Imágenes por segundo que busca cada límite durante la partida (null: todas las que permita la pantalla). */
 export const FPS_LIMIT_TARGET: Readonly<Record<FpsLimit, number | null>> = { auto: 60, saver: 30, off: null };
+/** Segundos de espera a que vuelva la tarjeta gráfica antes de pedir que se recargue la página. */
+export const CONTEXT_RESTORE_SECONDS = 8;
 /** Imágenes por segundo como máximo fuera de la partida (pausa, menús y diálogos). */
 export const IDLE_FPS_TARGET = 30;
 
@@ -32,6 +34,8 @@ export interface NumberRange {
 export const SENSITIVITY_RANGE: NumberRange = { min: 0.2, max: 3, step: 0.1, default: 1 };
 /** Campo de visión vertical en grados. */
 export const FOV_RANGE: NumberRange = { min: 55, max: 100, step: 1, default: 70 };
+/** Escala de la resolución interna que guarda la resolución dinámica (1 = completa). */
+export const RESOLUTION_SCALE_RANGE: NumberRange = { min: 0.6, max: 1, step: 0.05, default: 1 };
 
 export interface Settings {
   readonly version: number;
@@ -43,6 +47,8 @@ export interface Settings {
   readonly invertY: boolean;
   readonly fov: number;
   readonly quality: QualityLevel;
+  readonly dynamicResolution: boolean;
+  readonly resolutionScale: number;
   readonly fpsLimit: FpsLimit;
   readonly damageTaken: DamageTaken;
   readonly textSize: TextSize;

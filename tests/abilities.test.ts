@@ -246,17 +246,38 @@ describe('habilidades en el mundo', () => {
     const progress = createProgress('alba');
     const a = createAdventure(progress, 'cueva');
     expect(progress.gates).not.toContain('cueva-fortaleza');
-    expect(defeatBoss(a, 'guardian')).toEqual([{ type: 'gateOpened', id: 'cueva-fortaleza', byKey: false }]);
+    expect(defeatBoss(a, 'guardian')).toEqual([
+      { type: 'gateOpened', id: 'cueva-fortaleza', byKey: false },
+      { type: 'gateOpened', id: 'fortaleza-puerta', byKey: false },
+    ]);
     expect(progress.bosses).toEqual(['guardian']);
     expect(defeatBoss(a, 'guardian')).toEqual([]);
   });
 
-  it('la puerta de la Fortaleza sigue cerrada: es el cartel del siguiente tramo', () => {
+  it('una partida antigua con el Guardián vencido encuentra abierto el camino a la Fortaleza', () => {
     const progress = createProgress('alba');
     progress.bosses.push('guardian');
     const a = createAdventure(progress, 'cueva');
     expect(progress.gates).toContain('cueva-fortaleza');
-    expect(progress.gates).not.toContain('fortaleza-puerta');
-    expect(a.zone.exits.some((e) => (e.to as string) === 'fortaleza')).toBe(false);
+    expect(progress.gates).toContain('fortaleza-puerta');
+    expect(a.zone.exits.some((e) => e.to === 'fortaleza')).toBe(true);
+  });
+
+  it('el gemelo solo se puede liberar con el Regente vencido, y una sola vez', () => {
+    const progress = createProgress('ciro');
+    progress.respawn = { zone: 'fortaleza', entry: 'galeria' };
+    progress.place = { zone: 'fortaleza', entry: 'fromCueva' };
+    const a = createAdventure(progress, 'fortaleza');
+    const rescueOf = () => listInteractables(a).find((i) => i.kind === 'rescue');
+    expect(rescueOf()).toBeUndefined();
+    progress.bosses.push('regente');
+    const item = rescueOf();
+    if (!item) throw new Error('falta el rescate');
+    expect(interact(a, item, item.x, item.z)).toEqual([{ type: 'rescue' }]);
+    expect(progress.flags).toContain('gameCompleted');
+    // Al continuar se vuelve al último faro, no a donde acabó la escena.
+    expect(progress.place).toEqual({ zone: 'fortaleza', entry: 'galeria' });
+    expect(rescueOf()).toBeUndefined();
+    expect(interact(a, item, item.x, item.z)).toEqual([]);
   });
 });

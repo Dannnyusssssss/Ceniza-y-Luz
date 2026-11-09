@@ -193,7 +193,7 @@ export class Sfx {
         break;
       case 'bossWarn': {
         // Más grave cuanto más ancho es el ataque.
-        const base = [300, 420, 560][variant] ?? 420;
+        const base = [300, 420, 560, 240, 680][variant] ?? 420;
         this.tone(out, now, 'sawtooth', base, base * 1.35, 0.45, 0.14);
         break;
       }

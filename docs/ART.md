@@ -28,7 +28,9 @@ Los colores y los tiempos de los golpes y de la esquiva se leen de `src/data/` (
 
 Cada enemigo tiene los clips `idle`, `move`, `windup`, `attack`, `recover` y `hurt`; los de ataque duran lo que indica `enemies.ts`. Los aldeanos (`ilse`, `oren`, `teo`) comparten el esqueleto de los gemelos, con menos detalle, y tienen los clips `idle` y `talk`.
 
-Los objetos del mundo (`chest`, `beacon`, `switch`, `pushblock`, `plate`, `gate`, `torch`, `prism`, `shrine`, `crystalwall`) no llevan esqueleto. Las piezas que se mueven son objetos con nombre propio que el juego gira o desplaza: la tapa del cofre (`chestLid`, con el origen en la bisagra) y las rejas de la puerta (`gateBars`).
+Los jefes (`guardian`, `regente`) tienen sus propios clips de ataque, cuya duración se lee de `src/data/guardian.ts` y `src/data/regent.ts`.
+
+Los objetos del mundo (`chest`, `beacon`, `switch`, `pushblock`, `plate`, `gate`, `torch`, `prism`, `shrine`, `crystalwall`, `brazier`, `throne`) no llevan esqueleto. Las piezas que se mueven son objetos con nombre propio que el juego gira o desplaza: la tapa del cofre (`chestLid`, con el origen en la bisagra) y las rejas de la puerta (`gateBars`).
 
 ## Retoques a mano
 
@@ -36,18 +38,18 @@ Los objetos del mundo (`chest`, `beacon`, `switch`, `pushblock`, `plate`, `gate`
 
 ## Estructura de los scripts
 
-| Archivo                               | Contenido                                                                                                                      |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `art/build.mjs`                       | Lanza Blender por cada modelo, guarda las huellas y escribe el manifiesto.                                                     |
-| `art/blender/build_model.py`          | Punto de entrada dentro de Blender: genera o abre, renderiza vistas previas y exporta.                                         |
-| `art/blender/lib/common.py`           | Escena, mallas básicas, color por vértice, materiales, contorno, exportación y vistas previas.                                 |
-| `art/blender/lib/sculpt.py`           | Formas orgánicas con metaballs, cortes rectos, secciones del cuerpo, mechones y transferencia de pesos.                        |
-| `art/blender/lib/facepaint.py`        | Dibujo de la textura de la cara (ojos, cejas, nariz y boca).                                                                   |
-| `art/blender/lib/rig.py`              | Esqueleto, posturas y clips de animación.                                                                                      |
-| `art/blender/characters/twins*.py`    | Alba y Ciro: cuerpo, cabeza y pelo, ropa, animaciones y ensamblado.                                                            |
-| `art/blender/characters/villagers.py` | Ilse, Oren y Teo: ropa, pelo y clips sobre el cuerpo base de los gemelos.                                                      |
-| `art/blender/enemies/`                | Guardián de Cristal, Brumilla, Acechador, Coloso de Bruma y Tirador de Ceniza; `mist.py` reúne su paleta y sus piezas comunes. |
-| `art/blender/props/`                  | La Hoja de Luz, el muñeco de práctica y los objetos del mundo (`world_props.py`).                                              |
+| Archivo                               | Contenido                                                                                                                               |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `art/build.mjs`                       | Lanza Blender por cada modelo, guarda las huellas y escribe el manifiesto.                                                              |
+| `art/blender/build_model.py`          | Punto de entrada dentro de Blender: genera o abre, renderiza vistas previas y exporta.                                                  |
+| `art/blender/lib/common.py`           | Escena, mallas básicas, color por vértice, materiales, contorno, exportación y vistas previas.                                          |
+| `art/blender/lib/sculpt.py`           | Formas orgánicas con metaballs, cortes rectos, secciones del cuerpo, mechones y transferencia de pesos.                                 |
+| `art/blender/lib/facepaint.py`        | Dibujo de la textura de la cara (ojos, cejas, nariz y boca).                                                                            |
+| `art/blender/lib/rig.py`              | Esqueleto, posturas y clips de animación.                                                                                               |
+| `art/blender/characters/twins*.py`    | Alba y Ciro: cuerpo, cabeza y pelo, ropa, animaciones y ensamblado.                                                                     |
+| `art/blender/characters/villagers.py` | Ilse, Oren y Teo: ropa, pelo y clips sobre el cuerpo base de los gemelos.                                                               |
+| `art/blender/enemies/`                | Regente del Eclipse, Guardián de Cristal, Brumilla, Acechador, Coloso de Bruma y Tirador de Ceniza; `mist.py` reúne sus piezas comunes. |
+| `art/blender/props/`                  | La Hoja de Luz, el muñeco de práctica y los objetos del mundo (`world_props.py`, `cave_props.py`, `fortress_props.py`).                 |
 
 ## Convenciones
 

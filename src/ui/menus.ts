@@ -4,7 +4,13 @@ import { META } from '../data/meta';
 import { TEXTS } from '../data/texts';
 import type { Progress } from '../game/progress';
 import { button, h } from './dom';
-import { createDialogueBox, createInventoryPanel, createShopPanel, type DialogueView } from './gameScreens';
+import {
+  createCreditsPanel,
+  createDialogueBox,
+  createInventoryPanel,
+  createShopPanel,
+  type DialogueView,
+} from './gameScreens';
 import { createSettingsPanel } from './settingsPanel';
 
 export interface MenuActions {
@@ -32,7 +38,16 @@ function controlsList(): HTMLElement {
 /** Pantallas del juego en el DOM: inicio, elección de personaje, pausa y ajustes. */
 export class Menus {
   private current:
-    'start' | 'select' | 'pause' | 'settings' | 'death' | 'dialogue' | 'shop' | 'inventory' | null = null;
+    | 'start'
+    | 'select'
+    | 'pause'
+    | 'settings'
+    | 'death'
+    | 'dialogue'
+    | 'shop'
+    | 'inventory'
+    | 'credits'
+    | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -74,10 +89,11 @@ export class Menus {
           h('h2', { text: t.noticeTitle }),
           h('p', { text: t.notice }),
         ]),
-        h('h2', { text: t.controlsTitle }),
-        controlsList(),
+        // Los botones van antes que los controles: dentro de un iframe bajo, siguen a la vista sin desplazarse.
         h('div', { className: 'row' }, actions),
         h('p', { className: 'hint', text: t.keyboardExit }),
+        h('h2', { text: t.controlsTitle }),
+        controlsList(),
       ]),
     );
   }
@@ -173,6 +189,11 @@ export class Menus {
   showDialogue(view: DialogueView): void {
     const box = createDialogueBox(view);
     this.mount('dialogue', box.root, box.focus);
+  }
+
+  /** Créditos al terminar la aventura. */
+  showCredits(onClose: () => void): void {
+    this.mount('credits', createCreditsPanel(META.title, onClose));
   }
 
   showShop(progress: Progress): void {

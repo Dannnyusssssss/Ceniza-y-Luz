@@ -27,7 +27,8 @@ const SPIKE_RISE = 0.14;
 const SPIKE_HEIGHT = 2.6;
 const MAX_SPIKES = GUARDIAN.attacks.spikes.count;
 
-function unlit(name: string, hex: string, scene: Scene, alpha: number): StandardMaterial {
+/** Material sin luz para zonas de aviso y envolturas: siempre se ve igual, haya la luz que haya. */
+export function unlitMaterial(name: string, hex: string, scene: Scene, alpha: number): StandardMaterial {
   const material = new StandardMaterial(name, scene);
   material.disableLighting = true;
   material.diffuseColor = Color3.Black();
@@ -76,11 +77,11 @@ export class GuardianView {
     this.evaluator = new ClipEvaluator(this.model.animations);
     for (const mesh of this.model.meshes) mesh.overlayColor = Color3.White();
 
-    const fillMaterial = unlit('guardianFill', COLORS.danger, scene, 0.34);
+    const fillMaterial = unlitMaterial('guardianFill', COLORS.danger, scene, 0.34);
     fillMaterial.zOffset = -2;
-    const areaMaterial = unlit('guardianArea', COLORS.danger, scene, 0.14);
+    const areaMaterial = unlitMaterial('guardianArea', COLORS.danger, scene, 0.14);
     areaMaterial.zOffset = -1;
-    const shellMaterial = unlit('guardianShell', COLORS.shell, scene, 0.28);
+    const shellMaterial = unlitMaterial('guardianShell', COLORS.shell, scene, 0.28);
     this.materialsOwned = [fillMaterial, areaMaterial, shellMaterial];
 
     this.shell = CreateIcoSphere('guardianShell', { radius: 1.85, subdivisions: 1, flat: true }, scene);
