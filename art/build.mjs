@@ -19,6 +19,7 @@ import { COMBO_BALANCE, DODGE_BALANCE } from '../src/data/balance.ts';
 import { BLADE_COLORS, CHARACTERS } from '../src/data/characters.ts';
 import { LUMBRE_PALETTE } from '../src/data/palettes.ts';
 import { ENEMIES } from '../src/data/enemies.ts';
+import { GUARDIAN } from '../src/data/guardian.ts';
 import { NPCS } from '../src/data/npcs.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -37,6 +38,11 @@ const MODELS = [
   'pushblock',
   'plate',
   'gate',
+  'torch',
+  'prism',
+  'shrine',
+  'crystalwall',
+  'guardian',
   'ilse',
   'oren',
   'teo',
@@ -77,6 +83,7 @@ function gameData() {
     blade: BLADE_COLORS,
     characters: CHARACTERS,
     enemies: ENEMIES,
+    guardian: GUARDIAN,
     npcs: NPCS,
     timings: {
       dodge: DODGE_BALANCE.duration,

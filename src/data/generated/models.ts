@@ -488,4 +488,85 @@ export const MODELS = {
     triangles: 8960,
     textures: ['teo-face.png'],
   },
+  torch: {
+    model: 'torch',
+    clips: {},
+    bones: [],
+    triangles: 672,
+    textures: [],
+  },
+  prism: {
+    model: 'prism',
+    clips: {},
+    bones: [],
+    triangles: 200,
+    textures: [],
+  },
+  shrine: {
+    model: 'shrine',
+    clips: {},
+    bones: [],
+    triangles: 672,
+    textures: [],
+  },
+  crystalwall: {
+    model: 'crystalwall',
+    clips: {},
+    bones: [],
+    triangles: 480,
+    textures: [],
+  },
+  guardian: {
+    model: 'guardian',
+    clips: {
+      idle: {
+        frames: 120,
+        seconds: 2,
+      },
+      move: {
+        frames: 90,
+        seconds: 1.5,
+      },
+      sweepWindup: {
+        frames: 69,
+        seconds: 1.15,
+      },
+      sweep: {
+        frames: 27,
+        seconds: 0.45,
+      },
+      slamWindup: {
+        frames: 81,
+        seconds: 1.35,
+      },
+      slam: {
+        frames: 30,
+        seconds: 0.5,
+      },
+      stagger: {
+        frames: 192,
+        seconds: 3.2,
+      },
+      hurt: {
+        frames: 24,
+        seconds: 0.4,
+      },
+    },
+    bones: [
+      'root',
+      'hips',
+      'chest',
+      'head',
+      'upperarm.L',
+      'forearm.L',
+      'upperarm.R',
+      'forearm.R',
+      'thigh.L',
+      'shin.L',
+      'thigh.R',
+      'shin.R',
+    ],
+    triangles: 7050,
+    textures: [],
+  },
 } as const;
