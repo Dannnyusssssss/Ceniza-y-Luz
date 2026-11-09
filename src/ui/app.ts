@@ -297,6 +297,11 @@ export class App {
     this.input.requestLock();
   }
 
+  /** Pausa y menús: nada se mueve detrás, así que no hace falta volver a dibujar la escena. */
+  get sceneIsStatic(): boolean {
+    return this.state === 'paused' || this.state === 'menu';
+  }
+
   private pause(): void {
     this.state = 'paused';
     this.lastPauseAt = performance.now();

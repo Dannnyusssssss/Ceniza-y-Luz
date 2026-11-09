@@ -6,7 +6,8 @@ import type { SettingsStore } from '../core/settingsStore';
 import { CHARACTERS, type CharacterId } from '../data/characters';
 import { INTRO_SHOTS, type IntroShot } from '../data/intro';
 import { REGENT } from '../data/regent';
-import { QUALITY_PRESETS, renderScaling } from '../data/quality';
+import { QUALITY_PRESETS } from '../data/quality';
+import { applyRenderScale } from './renderScale';
 import type { ZonePalette } from '../data/palettes';
 import type { NpcId } from '../data/zones';
 import { isGateOpen, type AdventureState } from '../game/adventure';
@@ -97,7 +98,7 @@ export class SessionView {
     this.abilityView = new AbilityView(world.scene, world.materials, () => this.groundAt);
     settings.onChange((s) => {
       const q = QUALITY_PRESETS[s.quality];
-      engine.setHardwareScalingLevel(renderScaling(q, s.resolutionScale));
+      applyRenderScale(engine, q, s.resolutionScale);
       applyShadowFilter(world.shadows, q);
       applyPostProcessQuality(this.pipeline, q);
       this.camera.setFov(s.fov);

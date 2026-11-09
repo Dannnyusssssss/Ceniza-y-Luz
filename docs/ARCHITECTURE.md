@@ -56,7 +56,7 @@ La lógica comunica lo que ocurre mediante listas de eventos que devuelve cada f
 
 Cada zona tiene un presupuesto de 4 luces, un generador de sombras y 150 llamadas de dibujo. Las mallas repetidas usan instancias finas, y lo que crea una zona se libera al salir de ella.
 
-Los ajustes ofrecen tres calidades (`src/data/quality.ts`) y un límite de FPS que salta refrescos enteros de la pantalla para evitar tirones. La resolución dinámica (`src/core/resolutionGovernor.ts`) baja la resolución interna si los FPS quedan por debajo de 50 durante 10 segundos; se puede desactivar y vuelve a la resolución completa al cambiar de calidad.
+Los ajustes ofrecen tres calidades (`src/data/quality.ts`) y un límite de FPS que salta refrescos enteros de la pantalla para evitar tirones. La resolución dinámica (`src/core/resolutionGovernor.ts`) baja la resolución interna si los FPS quedan por debajo de 50 durante 10 segundos; se puede desactivar y vuelve a la resolución completa al cambiar de calidad. Baja y Media tienen además un alto máximo de imagen interna (720 y 1080 píxeles), de modo que una pantalla 4K no multiplica el trabajo; Alta no tiene tope. En pausa y en los menús de inventario y tienda no se redibuja la escena (`src/core/redrawGate.ts`), salvo al redimensionar, cambiar un ajuste o recuperar la tarjeta gráfica.
 
 ## Pruebas
 

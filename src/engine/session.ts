@@ -6,7 +6,8 @@ import type { CharacterId } from '../data/characters';
 import { FEEDBACK_BALANCE } from '../data/balance';
 import { HOME_SHOTS, RESCUE_SHOTS } from '../data/intro';
 import { LUMBRE_NIGHT_PALETTE, type ZonePalette } from '../data/palettes';
-import { QUALITY_PRESETS, renderScaling } from '../data/quality';
+import { QUALITY_PRESETS } from '../data/quality';
+import { applyRenderScale } from './renderScale';
 import { ZONES, type ExitData, type ZoneId } from '../data/zones';
 import {
   createAdventure,
@@ -112,7 +113,7 @@ export class GameSession {
     onProgress: (fraction: number) => void = () => undefined,
   ): Promise<GameSession> {
     const quality = QUALITY_PRESETS[settings.value.quality];
-    engine.setHardwareScalingLevel(renderScaling(quality, settings.value.resolutionScale));
+    applyRenderScale(engine, quality, settings.value.resolutionScale);
     const world = createWorldScene(engine, ZONES.lumbre.palette, quality);
     try {
       const assets = await loadAssets(world, onProgress);

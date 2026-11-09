@@ -64,6 +64,15 @@ describe('resolución dinámica', () => {
 describe('escala de render', () => {
   it('combina la calidad con la escala dinámica, sin pasar del tope', () => {
     expect(renderScaling(QUALITY_PRESETS.medium, 1)).toBe(1);
+    // El tope de alto: 1080p no cambia y 4K se dibuja a la mitad, salvo en Alta.
+    expect(renderScaling(QUALITY_PRESETS.medium, 1, 1080)).toBe(1);
+    expect(renderScaling(QUALITY_PRESETS.medium, 1, 720)).toBe(1);
+    expect(renderScaling(QUALITY_PRESETS.medium, 1, 2160)).toBe(2);
+    expect(renderScaling(QUALITY_PRESETS.medium, 1, 1440)).toBeCloseTo(4 / 3);
+    expect(renderScaling(QUALITY_PRESETS.high, 1, 2160)).toBe(1);
+    expect(renderScaling(QUALITY_PRESETS.low, 1, 1080)).toBe(1.5);
+    expect(renderScaling(QUALITY_PRESETS.low, 1, 2160)).toBe(D.maxScaling);
+    expect(renderScaling(QUALITY_PRESETS.medium, 0.8, 2160)).toBe(D.maxScaling);
     expect(renderScaling(QUALITY_PRESETS.medium, 0.8)).toBeCloseTo(1.25);
     expect(renderScaling(QUALITY_PRESETS.low, 0.6)).toBe(D.maxScaling);
   });

@@ -22,8 +22,9 @@ async function tryWebGpu(canvas: HTMLCanvasElement): Promise<CreatedEngine | nul
   try {
     if (!(await WebGPUEngine.IsSupportedAsync)) return null;
     // Sin powerPreference: Chrome en Windows la ignora y avisa en la consola.
+    // Sin antialias en la salida: los bordes ya se suavizan en el pipeline de efectos.
     const engine = new WebGPUEngine(canvas, {
-      antialias: true,
+      antialias: false,
       stencil: true,
       glslangOptions: NO_REMOTE_COMPILER,
       twgslOptions: NO_REMOTE_COMPILER,
@@ -37,7 +38,8 @@ async function tryWebGpu(canvas: HTMLCanvasElement): Promise<CreatedEngine | nul
 
 function tryWebGl2(canvas: HTMLCanvasElement): CreatedEngine | null {
   try {
-    const engine = new Engine(canvas, true, {
+    // Sin antialias en la salida: los bordes ya se suavizan en el pipeline de efectos.
+    const engine = new Engine(canvas, false, {
       stencil: true,
       powerPreference: 'high-performance',
       disableWebGL2Support: false,

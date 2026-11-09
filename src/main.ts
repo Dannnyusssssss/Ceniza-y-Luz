@@ -8,6 +8,9 @@ import { SaveSlot } from './engine/saveSlot';
 import { limitFrameRate } from './engine/frameRate';
 import { FrameLimiter, frameTarget } from './core/frameLimiter';
 import { ResolutionGovernor } from './core/resolutionGovernor';
+import { RedrawGate } from './core/redrawGate';
+import { applyRenderScale } from './engine/renderScale';
+import { QUALITY_PRESETS } from './data/quality';
 import { FixedStepLoop } from './core/loop';
 import { BrowserInput, type InputCallbacks } from './core/input';
 import { SafeStorage } from './core/storage';
@@ -164,6 +167,9 @@ async function start(): Promise<void> {
     frameTarget(FPS_LIMIT_TARGET[settings.value.fpsLimit], session.playing, IDLE_FPS_TARGET),
   );
   const governor = watchResolution(settings);
+  const gate = new RedrawGate();
+  settings.onChange(() => gate.invalidate());
+  engine.onContextRestoredObservable.add(() => gate.invalidate());
   const loop = new FixedStepLoop();
   engine.runRenderLoop(() => {
     const frameSeconds = engine.getDeltaTime() / 1000;
@@ -171,7 +177,8 @@ async function start(): Promise<void> {
     const { alpha } = loop.advance(frameSeconds, (dt) => session.systems.fixedUpdate(dt));
     session.systems.frameUpdate(frameSeconds, alpha);
     const t1 = performance.now();
-    session.world.scene.render();
+    // Con la imagen quieta (pausa y menús) la pantalla conserva el último fotograma: la gráfica descansa.
+    if (gate.shouldDraw(app.sceneIsStatic)) session.world.scene.render();
     debug.record(t1 - t0, performance.now() - t1, frameSeconds);
     if (session.playing && settings.value.dynamicResolution) {
       const limit = FPS_LIMIT_TARGET[settings.value.fpsLimit];
@@ -183,8 +190,12 @@ async function start(): Promise<void> {
       governor.reset();
     }
   });
-  window.addEventListener('resize', () => engine.resize());
-  watchPixelRatio(() => engine.resize());
+  const onResize = (): void => {
+    applyRenderScale(engine, QUALITY_PRESETS[settings.value.quality], settings.value.resolutionScale);
+    gate.invalidate();
+  };
+  window.addEventListener('resize', onResize);
+  watchPixelRatio(onResize);
 }
 
 start().catch(() => {

@@ -4,6 +4,8 @@ import type { QualityLevel } from './settings';
 export interface QualityPreset {
   /** Divisor de la resolución interna (1 = nativa, 1.5 = un 33 % menos de píxeles por eje). */
   readonly hardwareScaling: number;
+  /** Alto máximo de la imagen interna en píxeles (null: sin tope). Evita dibujar 4K en calidades pensadas para 1080p. */
+  readonly maxRenderHeight: number | null;
   /** Tamaño del mapa de sombras en píxeles. */
   readonly shadowMapSize: number;
   /** Filtrado suave de sombras (PCF). */
@@ -19,6 +21,7 @@ export interface QualityPreset {
 export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualityPreset>> = {
   low: {
     hardwareScaling: 1.5,
+    maxRenderHeight: 720,
     shadowMapSize: 512,
     softShadows: false,
     bloom: false,
@@ -28,6 +31,7 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualityPreset>> = {
   },
   medium: {
     hardwareScaling: 1,
+    maxRenderHeight: 1080,
     shadowMapSize: 1024,
     softShadows: true,
     bloom: true,
@@ -37,6 +41,7 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualityPreset>> = {
   },
   high: {
     hardwareScaling: 1,
+    maxRenderHeight: null,
     shadowMapSize: 2048,
     softShadows: true,
     bloom: true,
@@ -63,9 +68,16 @@ export const DYNAMIC_RESOLUTION = {
   maxScaling: 2,
 } as const;
 
-/** Divisor de resolución final: el de la calidad elegida, más lo que haya bajado la escala dinámica. */
-export function renderScaling(preset: QualityPreset, resolutionScale: number): number {
-  return Math.min(DYNAMIC_RESOLUTION.maxScaling, preset.hardwareScaling / resolutionScale);
+/** Fotogramas que se siguen dibujando al quedarse quieta la imagen o al cambiar algo en pausa (1 s en menús). */
+export const STATIC_REDRAW_FRAMES = 30;
+
+/**
+ * Divisor de resolución final: el de la calidad o el que impone su alto máximo, si es mayor, más lo que haya
+ * bajado la escala dinámica. `canvasHeight` es el alto del lienzo; con 0 no se aplica el tope.
+ */
+export function renderScaling(preset: QualityPreset, resolutionScale: number, canvasHeight = 0): number {
+  const cap = preset.maxRenderHeight === null ? 0 : canvasHeight / preset.maxRenderHeight;
+  return Math.min(DYNAMIC_RESOLUTION.maxScaling, Math.max(preset.hardwareScaling, cap) / resolutionScale);
 }
 
 /** Presupuestos de render por zona (`ARCHITECTURE.md` interno: luces, sombras y llamadas de dibujo). */
