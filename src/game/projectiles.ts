@@ -40,6 +40,8 @@ export function createProjectile(id: number, spawn: ProjectileSpawn): Projectile
 
 function overlapsBlock(x: number, z: number, radius: number, blocks: readonly BlockData[]): boolean {
   for (const b of blocks) {
+    // Lo que vuela pasa por encima de las grietas.
+    if (b.kind === 'crack') continue;
     const cx = Math.min(Math.max(x, b.x - b.halfX), b.x + b.halfX);
     const cz = Math.min(Math.max(z, b.z - b.halfZ), b.z + b.halfZ);
     if ((x - cx) ** 2 + (z - cz) ** 2 < radius * radius) return true;

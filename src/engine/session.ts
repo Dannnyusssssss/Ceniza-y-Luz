@@ -2,7 +2,6 @@ import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine';
 import type { BrowserInput } from '../core/input';
 import { SYSTEM_ORDER, SystemRegistry } from '../core/systems';
 import type { SettingsStore } from '../core/settingsStore';
-import type { BlockData } from '../data/arena';
 import type { CharacterId } from '../data/characters';
 import { DUMMY_BALANCE, FEEDBACK_BALANCE, PLAYER_BALANCE } from '../data/balance';
 import { LUMBRE_NIGHT_PALETTE, type ZonePalette } from '../data/palettes';
@@ -11,6 +10,7 @@ import { ZONES, type ExitData, type NpcId, type ZoneId } from '../data/zones';
 import {
   createAdventure,
   currentExit,
+  defeatBoss,
   enterZone,
   interact,
   nearestInteractable,
@@ -18,7 +18,9 @@ import {
   type AdventureState,
   type Interactable,
 } from '../game/adventure';
+import type { AbilityState } from '../game/abilities';
 import { createPlayer, updatePlayer, type PlayerState } from '../game/player';
+import { createGuardian, resetGuardian, type GuardianEvent, type GuardianState } from '../game/guardian';
 import { isInvulnerable } from '../game/dodge';
 import {
   cancelCombo,
@@ -32,7 +34,6 @@ import {
 } from '../game/combat';
 import { createDummy, hitDummy, updateDummy, type DummyState } from '../game/dummy';
 import {
-  aliveEnemies,
   clearCombat,
   createEncounter,
   resetEncounter,
@@ -43,7 +44,6 @@ import {
 } from '../game/encounter';
 import { isDead, reviveLoaded, resetHealth, setLife } from '../game/health';
 import { addSparks, usePotion } from '../game/inventory';
-import { currentObjective, type ObjectiveId } from '../game/objectives';
 import {
   createProgress,
   dodgeCooldownFactor,
@@ -53,11 +53,15 @@ import {
   templeFactor,
   type Progress,
 } from '../game/progress';
-import { waveNumber } from '../game/waves';
 import { createCameraRig, type CameraRig } from '../world/cameraRig';
+import { Music } from '../audio/music';
 import { Sfx } from '../audio/sfx';
 import { loadAssets, type SessionAssets } from './assets';
 import { CombatFeedback } from './combatFeedback';
+import { PowersRunner, type PowersContext } from './powers';
+import { playAdventureEffects, playGuardianEffects, type EffectTargets } from './sessionEffects';
+import { buildHudSnapshot, type HudSnapshot } from './sessionHud';
+import { SolidBlocks } from './solidBlocks';
 import { SessionView } from './sessionView';
 import { createWorldScene, type WorldScene } from './worldScene';
 
@@ -68,30 +72,10 @@ export type GameMode = 'story' | 'arena';
 const SHOWCASE_PITCH = 0.1;
 /** Cada cuántos pasos de lógica se busca qué hay al alcance (6 = 10 veces por segundo). */
 const PROMPT_EVERY_STEPS = 6;
-/** A esta distancia del muñeco se muestra su vida en el HUD. */
-const DUMMY_HUD_DISTANCE = 9;
 /** Todas las zonas tienen este punto de llegada: es donde se empieza. */
 const START_ENTRY = 'start';
 
-/** Lo que muestra el HUD en cada fotograma. */
-export interface HudSnapshot {
-  readonly quarters: number;
-  readonly maxQuarters: number;
-  readonly sparks: number;
-  readonly potions: number;
-  /** Oleada actual (null fuera de la arena). */
-  readonly wave: number | null;
-  /** Segundos hasta la siguiente oleada (null si se está luchando). */
-  readonly nextWaveIn: number | null;
-  readonly enemies: number;
-  readonly dodgeReady: boolean;
-  /** Lo que se puede usar ahora con E. */
-  readonly prompt: Interactable | null;
-  /** Qué le toca hacer al jugador (null en la arena). */
-  readonly objective: ObjectiveId | null;
-  /** El muñeco está cerca y conviene mostrar su vida. */
-  readonly dummyNear: boolean;
-}
+export type { HudSnapshot };
 
 /**
  * Una partida: zona actual, personaje, enemigos y sistemas registrados en orden. Lo que se ve está en `SessionView`.
@@ -106,6 +90,9 @@ export class GameSession {
   readonly dummy: DummyState = createDummy(0, 0);
   readonly encounter: EncounterState;
   readonly sfx = new Sfx();
+  readonly music = new Music();
+  readonly powers: PowersRunner;
+  guardian: GuardianState | null = null;
   adventure: AdventureState;
   /** Pausa de impacto restante (s). */
   hitStop = 0;
@@ -123,14 +110,13 @@ export class GameSession {
   onAdventure: (event: AdventureEvent) => void = () => undefined;
   /** El jugador llegó a una salida de la zona. */
   onExit: (exit: ExitData) => void = () => undefined;
+  /** Algo importante del jefe: la interfaz lo muestra (toda señal sonora tiene su señal visual). */
+  onGuardian: (event: GuardianEvent) => void = () => undefined;
   private readonly view: SessionView;
   private readonly feedback: CombatFeedback;
   private stepCount = 0;
   private prompt: Interactable | null = null;
-  /** Bloques con el muñeco incluido; se rehacen al cambiar los de la aventura. */
-  private solidBlocks: readonly BlockData[] = [];
-  private solidSource: readonly BlockData[] | null = null;
-  private solidWithDummy = false;
+  private readonly solids = new SolidBlocks();
 
   /** Crea la escena, carga los modelos y prepara la partida. */
   static async create(
@@ -174,8 +160,25 @@ export class GameSession {
       onRetryReady: () => this.onRetryReady(),
       onWave: (kind, wave) => this.onBanner(kind, wave),
     });
+    this.powers = new PowersRunner(this.sfx, {
+      onEncounterEvents: (events) => {
+        if (this.feedback.handle(events)) this.feedback.shake();
+      },
+      onAdventureEvents: (events) => this.handleAdventure(events),
+      onGuardianEvents: (events) => this.handleGuardian(events),
+      onBurst: (x, z) => this.view.encounterView.burst(x, z, settings.value.reduceMotion),
+      onDummyHit: (dummy) => this.onDummyChanged(dummy),
+      onBladeImpact: () => {
+        this.hitStop = FEEDBACK_BALANCE.hitStop;
+        this.feedback.shake();
+      },
+    });
     this.sfx.setMuted(settings.value.muted);
-    settings.onChange((s) => this.sfx.setMuted(s.muted));
+    this.music.setEnabled(settings.value.music);
+    settings.onChange((s) => {
+      this.sfx.setMuted(s.muted);
+      this.music.setEnabled(s.music);
+    });
     this.view.setBladeVisible(hasFlag(this.progress, 'bladeTaken'));
     this.loadZone(this.homeZone(), START_ENTRY);
     this.registerSystems();
@@ -195,12 +198,26 @@ export class GameSession {
     return this.adventure.progress;
   }
 
+  /** Estado de las habilidades (la vista dibuja los disparos). */
+  get abilities(): AbilityState {
+    return this.powers.state;
+  }
+
+  /** Crea o reanuda el audio y la música. Solo se puede tras una acción del jugador. */
+  unlockAudio(): void {
+    this.sfx.unlock();
+    this.music.attach(this.sfx.output);
+  }
+
   /** Crea la zona y coloca al jugador. Los enemigos vuelven a su sitio; lo abierto y resuelto se conserva. */
   private loadZone(zoneId: ZoneId, entry: string, palette?: ZonePalette, npcs = true): void {
     clearCombat(this.encounter);
     enterZone(this.adventure, zoneId);
     const zone = this.adventure.zone;
+    const boss = zone.boss;
+    this.guardian = boss ? createGuardian(boss, this.progress.bosses.includes(boss.id)) : null;
     this.view.loadZone(this.adventure, palette, npcs);
+    this.music.setZone(zoneId);
     spawnZoneEnemies(this.encounter, zone.enemies);
     if (zone.dummy) {
       this.dummy.x = zone.dummy.x;
@@ -210,7 +227,7 @@ export class GameSession {
       this.dummy.sinceHit = Number.POSITIVE_INFINITY;
       this.onDummyChanged(this.dummy);
     }
-    this.solidSource = null;
+    this.solids.invalidate();
     this.prompt = null;
     this.placePlayer(entry);
   }
@@ -227,6 +244,7 @@ export class GameSession {
     p.dodge.phase = 'ready';
     p.dodge.time = 0;
     cancelCombo(this.combo);
+    this.powers.reset();
     this.hitStop = 0;
     this.cameraRig.yaw = place.yaw;
     this.view.focusShadows(place.x, place.z);
@@ -335,20 +353,43 @@ export class GameSession {
   }
 
   /** Bloques sólidos de este paso: los de la zona y el muñeco en pie. */
-  private blocksNow(): readonly BlockData[] {
-    const withDummy = this.adventure.zone.dummy !== null && this.dummy.respawn <= 0;
-    if (this.solidSource !== this.adventure.blocks || this.solidWithDummy !== withDummy) {
-      this.solidSource = this.adventure.blocks;
-      this.solidWithDummy = withDummy;
-      const r = DUMMY_BALANCE.radius * 0.7;
-      this.solidBlocks = withDummy
-        ? [
-            ...this.adventure.blocks,
-            { x: this.dummy.x, z: this.dummy.z, halfX: r, halfZ: r, height: 3, kind: 'prop' },
-          ]
-        : this.adventure.blocks;
+  private blocksNow(): ReturnType<SolidBlocks['get']> {
+    return this.solids.get(this.adventure, this.dummy);
+  }
+
+  /** Lo que necesitan las habilidades y el jefe en este paso. */
+  private powersContext(): PowersContext {
+    return {
+      adventure: this.adventure,
+      player: this.player,
+      encounter: this.encounter,
+      combo: this.combo,
+      dummy: this.dummy,
+      guardian: this.guardian,
+      cameraYaw: this.cameraRig.yaw,
+      damageSetting: this.settings.value.damageTaken,
+      invulnerable: isInvulnerable(this.player.dodge) || this.powers.dashing,
+    };
+  }
+
+  private effects(): EffectTargets {
+    return {
+      sfx: this.sfx,
+      music: this.music,
+      feedback: this.feedback,
+      view: this.view,
+      reduceMotion: this.settings.value.reduceMotion,
+    };
+  }
+
+  private handleGuardian(events: readonly GuardianEvent[]): void {
+    for (const e of events) {
+      playGuardianEffects(this.effects(), this.guardian, e);
+      if (e.type === 'guardianDefeated' && this.guardian) {
+        this.handleAdventure(defeatBoss(this.adventure, this.guardian.data.id));
+      }
+      this.onGuardian(e);
     }
-    return this.solidBlocks;
   }
 
   /** Comprueba si el golpe actual alcanza al muñeco. */
@@ -377,47 +418,12 @@ export class GameSession {
   /** Efectos de usar un objeto; los textos los pone la interfaz. */
   private handleAdventure(events: readonly AdventureEvent[]): void {
     for (const e of events) {
-      switch (e.type) {
-        case 'talk':
-          this.faceNpc(e.npc);
-          this.sfx.play('talk');
-          break;
-        case 'read':
-          this.sfx.play('talk');
-          break;
-        case 'chestOpened':
-          this.sfx.play('open');
-          if (e.result.heartGained) {
-            const max = maxQuarters(this.progress);
-            setLife(this.encounter.health, max, max);
-          }
-          break;
-        case 'rest':
-          this.rest();
-          break;
-        case 'bladeTaken':
-          this.sfx.play('blade');
-          this.view.setBladeVisible(true);
-          break;
-        case 'gateOpened':
-          this.sfx.play('door');
-          break;
-        case 'gateLocked':
-        case 'blockStuck':
-          this.sfx.play('wrong');
-          break;
-        case 'switchPressed':
-          this.sfx.play(e.result === 'wrong' ? 'wrong' : 'click');
-          break;
-        case 'blockPushed':
-          this.sfx.play('push');
-          break;
-        case 'puzzleSolved':
-          this.sfx.play('solved');
-          break;
-        case 'puzzleReset':
-          this.sfx.play('click');
-          break;
+      playAdventureEffects(this.effects(), e);
+      if (e.type === 'talk') this.faceNpc(e.npc);
+      if (e.type === 'rest') this.rest();
+      if (e.type === 'chestOpened' && e.result.heartGained) {
+        const max = maxQuarters(this.progress);
+        setLife(this.encounter.health, max, max);
       }
       this.onAdventure(e);
     }
@@ -438,6 +444,7 @@ export class GameSession {
     this.view.encounterView.clear();
     clearCombat(this.encounter);
     spawnZoneEnemies(this.encounter, this.adventure.zone.enemies);
+    if (this.guardian) resetGuardian(this.guardian);
   }
 
   /** Busca qué hay al alcance (unas veces por segundo), lo usa si se pulsó E y comprueba las salidas. */
@@ -475,17 +482,33 @@ export class GameSession {
         const stunned = isDead(health) || health.knockTime > 0;
         const dodgePressed = state.takePressed('dodge') && !stunned;
         const dodging = this.player.dodge.phase === 'dodging';
+        const axisNow = stunned ? { x: 0, z: 0 } : state.moveAxis();
+        const dashing = this.powers.handleInput(this.powersContext(), dt, {
+          stunned,
+          dodging,
+          pulse: state.takePressed('pulse'),
+          dash: state.takePressed('dash'),
+          moveX: axisNow.x,
+          moveZ: axisNow.z,
+          blocks: this.blocksNow(),
+        });
+        if (dashing) {
+          // La carrera manda: ni otros movimientos ni ataques hasta que termine.
+          state.takePressed('attack');
+          state.takePressed('dodge');
+          this.updateInteraction(false);
+          return;
+        }
         // Sin la Hoja no hay ataque.
         const hasBlade = hasFlag(this.progress, 'bladeTaken');
         const attackPressed = state.takePressed('attack') && !dodging && !stunned && hasBlade;
         if (dodgePressed && this.player.dodge.phase === 'ready') cancelCombo(this.combo);
         const wasReady = this.player.dodge.phase === 'ready';
         if (updateCombo(this.combo, attackPressed, dt) !== null) this.sfx.play('swing', this.combo.step);
-        const axis = stunned ? { x: 0, z: 0 } : state.moveAxis();
         this.player.dodge.cooldownFactor = dodgeCooldownFactor(this.progress);
         updatePlayer(
           this.player,
-          { moveX: axis.x, moveZ: axis.z, walk: state.isDown('walk'), dodge: dodgePressed },
+          { moveX: axisNow.x, moveZ: axisNow.z, walk: state.isDown('walk'), dodge: dodgePressed },
           this.cameraRig.yaw,
           dt,
           this.blocksNow(),
@@ -501,17 +524,19 @@ export class GameSession {
       order: SYSTEM_ORDER.combat,
       fixedUpdate: (dt) => {
         if (!this.playing || this.hitStop > 0) return;
+        this.powers.stepGuardian(this.powersContext(), dt);
         const dummyHit = this.resolveDummyHit();
         if (dummyHit) this.sfx.play('hit');
         const events = updateEncounter(this.encounter, dt, {
           player: this.player,
           playerRadius: PLAYER_BALANCE.radius,
           combo: this.combo,
-          dodging: isInvulnerable(this.player.dodge),
+          dodging: isInvulnerable(this.player.dodge) || this.powers.dashing,
           damageSetting: this.settings.value.damageTaken,
           blocks: this.blocksNow(),
           damageFactor: templeFactor(this.progress.temple),
         });
+        this.powers.stepPulses(this.powersContext(), dt, this.blocksNow());
         const impact = this.feedback.handle(events) || dummyHit;
         if (impact) {
           this.hitStop = FEEDBACK_BALANCE.hitStop;
@@ -559,29 +584,24 @@ export class GameSession {
       order: SYSTEM_ORDER.ui,
       frameUpdate: () => {
         if (!this.playing) return;
-        const e = this.encounter;
-        const arena = this.mode === 'arena';
-        const dummy = this.adventure.zone.dummy;
-        this.onHud({
-          quarters: e.health.quarters,
-          maxQuarters: e.health.maxQuarters,
-          sparks: this.progress.sparks,
-          potions: this.progress.potions,
-          wave: arena ? waveNumber(e.waves) : null,
-          nextWaveIn: arena && e.waves.phase === 'waiting' ? Math.max(0, e.waves.timer) : null,
-          enemies: aliveEnemies(e),
-          dodgeReady: this.player.dodge.phase === 'ready',
-          prompt: this.prompt,
-          objective: arena ? null : currentObjective(this.progress),
-          dummyNear:
-            dummy !== null &&
-            Math.hypot(this.player.x - dummy.x, this.player.z - dummy.z) < DUMMY_HUD_DISTANCE,
-        });
+        this.onHud(
+          buildHudSnapshot({
+            encounter: this.encounter,
+            progress: this.progress,
+            player: this.player,
+            zone: this.adventure.zone,
+            abilities: this.powers.state,
+            guardian: this.guardian,
+            prompt: this.prompt,
+            arena: this.mode === 'arena',
+          }),
+        );
       },
     });
   }
 
   dispose(): void {
+    this.music.dispose();
     this.sfx.dispose();
     this.world.scene.dispose();
     this.engine.setHardwareScalingLevel(1);

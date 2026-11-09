@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { BlockData } from '../src/data/arena';
 import { PLAYER_BALANCE } from '../src/data/balance';
+import { ABILITY_BALANCE } from '../src/data/items';
 import { PUZZLES } from '../src/data/puzzles';
 import { STORY_ZONES, ZONES, type ZoneData, type ZoneId } from '../src/data/zones';
+import { planDash } from '../src/game/abilities';
 import { createAdventure, refreshBlocks } from '../src/game/adventure';
 import { createProgress } from '../src/game/progress';
 import { cellCenter } from '../src/game/puzzles';
@@ -228,6 +230,7 @@ describe('se puede recorrer el mundo', () => {
     expect(near(seen, chest('bosque-alcoba'))).toBe(false);
     expect(near(seen, chest('bosque-llave'))).toBe(false);
     for (const puzzle of PUZZLES) {
+      if (puzzle.zone !== 'bosque') continue;
       if (puzzle.kind === 'sequence') {
         for (const s of puzzle.switches) expect(canReach(seen, s.x, s.z, 1.5), s.id).toBe(true);
       } else {
@@ -261,6 +264,121 @@ describe('se puede recorrer el mundo', () => {
     progress.gates.push('bosque-claro');
     seen = seenAt();
     expect(near(seen, chest('bosque-claro'))).toBe(true);
+  });
+
+  it('en la Ciénaga cada puerta da paso a lo que guarda', () => {
+    const zone = ZONES.cienaga;
+    const progress = createProgress('alba');
+    const adventure = createAdventure(progress, 'cienaga');
+    const from = start('cienaga', 'fromBosque');
+    const seenAt = (): Set<string> => {
+      refreshBlocks(adventure);
+      return reachable(zone, adventure.blocks, from.x, from.z);
+    };
+    let seen = seenAt();
+    const shrine = zone.shrines[0];
+    if (!shrine) throw new Error('falta el altar');
+    const north = zone.exits.find((e) => e.to === 'cueva');
+    if (!north) throw new Error('falta la salida');
+    // De entrada: los bloques y el mural, pero ni el altar ni el norte.
+    const blocks = PUZZLES.find((p) => p.id === 'cienaga-bloques');
+    if (blocks?.kind !== 'blocks') throw new Error('faltan los bloques');
+    for (const b of blocks.blocks) {
+      const c = cellCenter(blocks, b);
+      expect(canReach(seen, c.x, c.z, 2)).toBe(true);
+    }
+    expect(canReach(seen, blocks.reset.x, blocks.reset.z, 1.5)).toBe(true);
+    expect(canReach(seen, shrine.x, shrine.z, 2)).toBe(false);
+    expect(canReach(seen, north.x, north.z, 0.4)).toBe(false);
+    // Con los bloques, el altar.
+    progress.gates.push('cienaga-alcoba');
+    seen = seenAt();
+    expect(canReach(seen, shrine.x, shrine.z, 2)).toBe(true);
+    expect(canReach(seen, north.x, north.z, 0.4)).toBe(false);
+    // Con las antorchas, todo el resto.
+    progress.gates.push('cienaga-puerta');
+    seen = seenAt();
+    expect(canReach(seen, north.x, north.z, 0.4)).toBe(true);
+    for (const c of zone.chests) expect(canReach(seen, c.x, c.z, 1.8), c.id).toBe(true);
+    for (const b of zone.beacons) expect(canReach(seen, b.x, b.z, 1.6), b.id).toBe(true);
+    for (const s of zone.signs) expect(canReach(seen, s.x, s.z, 1.6), s.id).toBe(true);
+  });
+
+  it('las antorchas y los prismas están a pie de orilla: nunca se llega a tocarlos, pero sí se ven de cerca', () => {
+    for (const id of ['cienaga-antorchas', 'cueva-prismas']) {
+      const data = PUZZLES.find((p) => p.id === id);
+      if (data?.kind !== 'sequence') throw new Error(`Falta ${id}`);
+      const zone = ZONES[data.zone];
+      const adventure = createAdventure(createProgress('alba'), data.zone);
+      const from = Object.values(zone.entries)[0];
+      if (!from) throw new Error('falta la llegada');
+      const seen = reachable(zone, adventure.blocks, from.x, from.z);
+      // Desde algún punto pisable hay línea de tiro dentro del alcance del Pulso.
+      for (const s of data.switches)
+        expect(canReach(seen, s.x, s.z, ABILITY_BALANCE.pulso.range * 0.6), s.id).toBe(true);
+    }
+  });
+
+  it('en la Cueva la grieta solo se cruza con el Impulso y cada barrera guarda lo suyo', () => {
+    const zone = ZONES.cueva;
+    const progress = createProgress('ciro');
+    const adventure = createAdventure(progress, 'cueva');
+    const south = start('cueva', 'fromCienaga');
+    const middle = start('cueva', 'medio');
+    const shrine = zone.shrines[0];
+    if (!shrine) throw new Error('falta el altar');
+    const chest = (id: string): { x: number; z: number } => {
+      const c = zone.chests.find((k) => k.id === id);
+      if (!c) throw new Error(`Falta el cofre ${id}`);
+      return c;
+    };
+    const southSeen = (): Set<string> => {
+      refreshBlocks(adventure);
+      return reachable(zone, adventure.blocks, south.x, south.z);
+    };
+    const middleSeen = (): Set<string> => {
+      refreshBlocks(adventure);
+      return reachable(zone, adventure.blocks, middle.x, middle.z);
+    };
+    let seen = southSeen();
+    // A pie no se pasa de la grieta.
+    expect(canReach(seen, middle.x, middle.z, 1)).toBe(false);
+    expect(canReach(seen, shrine.x, shrine.z, 2)).toBe(false);
+    progress.gates.push('cueva-sala');
+    seen = southSeen();
+    expect(canReach(seen, shrine.x, shrine.z, 2)).toBe(true);
+    expect(canReach(seen, chest('cueva-sala').x, chest('cueva-sala').z, 1.8)).toBe(true);
+    // Del otro lado: el faro, pero la barrera detiene el paso hacia el jefe y el tesoro.
+    seen = middleSeen();
+    const boss = zone.boss;
+    if (!boss) throw new Error('falta el jefe');
+    expect(canReach(seen, boss.x, boss.z, 1)).toBe(false);
+    expect(canReach(seen, chest('cueva-tesoro').x, chest('cueva-tesoro').z, 1.8)).toBe(false);
+    progress.gates.push('cueva-tesoro');
+    seen = middleSeen();
+    expect(canReach(seen, chest('cueva-tesoro').x, chest('cueva-tesoro').z, 1.8)).toBe(true);
+    progress.gates.push('cueva-cristal');
+    seen = middleSeen();
+    expect(canReach(seen, boss.x, boss.z, 1)).toBe(true);
+    const reward = chest('cueva-guardian');
+    expect(canReach(seen, reward.x, reward.z, 1.8)).toBe(false);
+    progress.gates.push('cueva-fortaleza');
+    seen = middleSeen();
+    expect(canReach(seen, reward.x, reward.z, 1.8)).toBe(true);
+    for (const s of zone.signs) {
+      if (s.id !== 'cueva-cartel-prismas' && s.id !== 'cueva-cartel-grieta') {
+        expect(canReach(seen, s.x, s.z, 1.6), s.id).toBe(true);
+      }
+    }
+  });
+
+  it('el Impulso cruza la gran grieta desde el borde, en los dos sentidos', () => {
+    const blocks = createAdventure(createProgress('alba'), 'cueva').blocks;
+    const r = PLAYER_BALANCE.radius;
+    const north = planDash(0, 0 - 0.1 + -0.5, 0, 1, r, blocks);
+    expect(north.z).toBeGreaterThan(3.7 + r - 0.01);
+    const back = planDash(0, 4.6, 0, -1, r, blocks);
+    expect(back.z).toBeLessThan(0.3 - r + 0.01);
   });
 
   it('ningún punto de llegada cae dentro de un bloque', () => {

@@ -103,7 +103,28 @@ describe('objetivo actual', () => {
     p.chests.push('bosque-llave');
     expect(currentObjective(p)).toBe('clearing');
     p.gates.push('bosque-claro');
+    expect(currentObjective(p)).toBe('seal');
+    p.chests.push('bosque-sello');
     expect(currentObjective(p)).toBe('mist');
+    p.gates.push('bosque-bruma');
+    expect(currentObjective(p)).toBe('marshBlocks');
+    p.puzzles.push('cienaga-bloques');
+    expect(currentObjective(p)).toBe('pulse');
+    p.abilities.push('pulso');
+    expect(currentObjective(p)).toBe('torches');
+    p.puzzles.push('cienaga-antorchas');
+    p.place = { zone: 'cienaga', entry: 'norte' };
+    expect(currentObjective(p)).toBe('cave');
+    p.place = { zone: 'cueva', entry: 'fromCienaga' };
+    expect(currentObjective(p)).toBe('prisms');
+    p.puzzles.push('cueva-prismas');
+    expect(currentObjective(p)).toBe('impulse');
+    p.abilities.push('impulso');
+    expect(currentObjective(p)).toBe('crack');
+    p.gates.push('cueva-cristal');
+    expect(currentObjective(p)).toBe('guardian');
+    p.bosses.push('guardian');
+    expect(currentObjective(p)).toBe('fortress');
   });
 });
 

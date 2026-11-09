@@ -21,6 +21,12 @@ const GLOW = { warm: '#ffd98a', cyan: '#8fe9ff', violet: '#a98bff' };
 const AWNING = ['#d65a4a', '#f4e8cf'];
 const BRUMA_DARK = '#5a4490';
 
+/** La barrera de Bruma: se desvanece al abrirse. */
+export interface Veil {
+  readonly mesh: Mesh;
+  readonly material: StandardMaterial;
+}
+
 /** Dos mallas por zona: lo que recibe luz y lo que brilla. */
 interface Builders {
   readonly solid: MeshBuilder;
@@ -161,14 +167,14 @@ function addStones(b: Builders, s: StructureData, y: number): void {
 }
 
 /** Muros de piedra y ruinas con el borde superior más oscuro. */
-function addBlocks(b: Builders, zone: ZoneData): void {
+function addBlocks(b: Builders, zone: ZoneData, palette: ZonePalette): void {
   for (const block of zone.blocks) {
     if (block.kind !== 'wall' && block.kind !== 'ruin' && block.kind !== 'pillar') continue;
     const y = groundHeight(zone, block.x, block.z);
     const below = 0.9;
     const w = block.halfX * 2;
     const d = block.halfZ * 2;
-    b.solid.box(w, block.height + below, d, STONE.mid, {
+    b.solid.box(w, block.height + below, d, palette.stone ?? STONE.mid, {
       x: block.x,
       y: y + (block.height - below) / 2,
       z: block.z,
@@ -224,11 +230,12 @@ export function addZoneStructures(
   palette: ZonePalette,
   materials: ToonMaterials,
   shadows: ShadowGenerator,
-): { meshes: Mesh[]; materials: StandardMaterial[] } {
+): { meshes: Mesh[]; materials: StandardMaterial[]; veil: Veil | null } {
   const b: Builders = { solid: new MeshBuilder(), glow: new MeshBuilder() };
   const owned: StandardMaterial[] = [];
   const meshes: Mesh[] = [];
-  addBlocks(b, zone);
+  addBlocks(b, zone, palette);
+  let veil: Veil | null = null;
   for (const s of zone.structures) {
     const y = groundHeight(zone, s.x, s.z);
     switch (s.kind) {
@@ -277,7 +284,7 @@ export function addZoneStructures(
   // Barrera de Bruma: velos violetas superpuestos, semitransparentes y quietos.
   const barriers = zone.structures.filter((s) => s.kind === 'barrier');
   if (barriers.length > 0) {
-    const veil = new MeshBuilder();
+    const veilParts = new MeshBuilder();
     for (const s of barriers) {
       const y = groundHeight(zone, s.x, s.z);
       // Columnas de bruma de distinta altura: nada de bordes rectos, se leen como humo denso.
@@ -287,7 +294,7 @@ export function addZoneStructures(
           const k = i / (columns - 1) - 0.5;
           const wave = Math.sin(i * 1.9 + layer * 2.3) * 0.5 + 0.5;
           const height = (5.5 + wave * 3.5) * (1 - Math.abs(k) * 0.55);
-          veil.cylinder(height, 0.5, 1.5, 6, layer === 1 ? GLOW.violet : BRUMA_DARK, {
+          veilParts.cylinder(height, 0.5, 1.5, 6, layer === 1 ? GLOW.violet : BRUMA_DARK, {
             x: s.x + k * (s.w + 3) + layer * 0.2,
             y: y + height / 2 - 0.2,
             z: s.z + (layer - 1) * 0.55,
@@ -301,9 +308,12 @@ export function addZoneStructures(
     material.emissiveColor = Color3.White();
     material.alpha = 0.3;
     material.backFaceCulling = false;
-    const mesh = veil.build('barrier', scene, material);
-    if (mesh) meshes.push(mesh);
+    const mesh = veilParts.build('barrier', scene, material);
+    if (mesh) {
+      meshes.push(mesh);
+      veil = { mesh, material };
+    }
     owned.push(material);
   }
-  return { meshes, materials: owned };
+  return { meshes, materials: owned, veil };
 }

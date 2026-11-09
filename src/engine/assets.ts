@@ -12,6 +12,7 @@ export interface SessionAssets {
   readonly dummy: LoadedModel;
   readonly characters: Readonly<Record<CharacterId, LoadedModel>>;
   readonly enemies: Readonly<Record<EnemyKind, LoadedModel>>;
+  readonly guardian: LoadedModel;
   readonly props: PropModels;
 }
 
@@ -31,6 +32,11 @@ export async function loadAssets(
     'pushblock',
     'plate',
     'gate',
+    'torch',
+    'prism',
+    'shrine',
+    'crystalwall',
+    'guardian',
     ...ENEMY_KINDS,
     ...NPC_IDS,
   ];
@@ -60,6 +66,7 @@ export async function loadAssets(
       coloso: get('coloso'),
       tirador: get('tirador'),
     },
+    guardian: get('guardian'),
     props: {
       chest: get('chest'),
       beacon: get('beacon'),
@@ -67,6 +74,10 @@ export async function loadAssets(
       pushblock: get('pushblock'),
       plate: get('plate'),
       gate: get('gate'),
+      torch: get('torch'),
+      prism: get('prism'),
+      shrine: get('shrine'),
+      crystalWall: get('crystalwall'),
       blade: get('blade'),
       npcs,
     },

@@ -17,6 +17,7 @@ export function defaultSettings(prefersReducedMotion: boolean): Settings {
   return {
     version: SETTINGS_VERSION,
     muted: false,
+    music: true,
     reduceFlashing: false,
     reduceMotion: prefersReducedMotion,
     sensitivity: SENSITIVITY_RANGE.default,
@@ -84,6 +85,7 @@ export function validateSettings(source: unknown, prefersReducedMotion: boolean)
   return {
     version: SETTINGS_VERSION,
     muted: readBoolean(data, 'muted', defaults.muted),
+    music: readBoolean(data, 'music', defaults.music),
     reduceFlashing: readBoolean(data, 'reduceFlashing', defaults.reduceFlashing),
     reduceMotion: readBoolean(data, 'reduceMotion', defaults.reduceMotion),
     sensitivity: readNumber(data, 'sensitivity', SENSITIVITY_RANGE),

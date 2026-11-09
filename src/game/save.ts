@@ -1,22 +1,30 @@
 import { isCharacterId } from '../data/characters';
 import { ABILITY_IDS, ITEM_BALANCE, KEY_IDS, SPECIAL_IDS } from '../data/items';
 import { PUZZLES } from '../data/puzzles';
-import { FIRST_ENTRY, FIRST_ZONE, STORY_FLAGS, STORY_ZONES, ZONES, type ZoneId } from '../data/zones';
+import {
+  BOSS_IDS,
+  FIRST_ENTRY,
+  FIRST_ZONE,
+  STORY_FLAGS,
+  STORY_ZONES,
+  ZONES,
+  type ZoneId,
+} from '../data/zones';
 import { createProgress, maxQuarters, type Place, type Progress } from './progress';
 
 /** Versión actual del formato guardado. Cambiarlo exige una migración. */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 /** Un guardado más largo que esto no es nuestro: no se intenta leer. */
 const MAX_SAVE_LENGTH = 64 * 1024;
 
 type RawSave = Record<string, unknown>;
 
-/**
- * Migraciones: cada una pasa de la versión `n` a la `n + 1`. Por ahora solo existe la versión 1;
- * la primera migración se añadirá aquí, con su test, cuando cambie el formato.
- */
+/** Migraciones: cada una pasa de la versión `n` a la `n + 1`. */
 export type SaveMigrations = Readonly<Record<number, (save: RawSave) => RawSave>>;
-export const SAVE_MIGRATIONS: SaveMigrations = {};
+export const SAVE_MIGRATIONS: SaveMigrations = {
+  // La versión 2 añade la Ciénaga, la Cueva, las habilidades y los jefes: una partida antigua no tiene ninguno.
+  1: (save) => ({ ...save, abilities: [], bosses: [] }),
+};
 
 export function isRecord(value: unknown): value is RawSave {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -84,7 +92,7 @@ export function validateSave(raw: RawSave): Progress | null {
       PUZZLES.map((p) => p.id),
     ),
     gates: idList(raw['gates'], allGateIds()),
-    bosses: idList(raw['bosses'], [] as string[]),
+    bosses: idList(raw['bosses'], BOSS_IDS),
     flags: idList(raw['flags'], STORY_FLAGS),
   };
 }

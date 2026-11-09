@@ -1,7 +1,14 @@
 import { HEALTH_BALANCE } from '../data/balance';
 import type { CharacterId } from '../data/characters';
 import { ITEM_BALANCE, type AbilityId, type KeyId, type SpecialId } from '../data/items';
-import { FIRST_BEACON, FIRST_ENTRY, FIRST_ZONE, type StoryFlag, type ZoneId } from '../data/zones';
+import {
+  FIRST_BEACON,
+  FIRST_ENTRY,
+  FIRST_ZONE,
+  type BossId,
+  type StoryFlag,
+  type ZoneId,
+} from '../data/zones';
 
 /** Un lugar al que se puede volver: una zona y uno de sus puntos de llegada. */
 export interface Place {
@@ -30,7 +37,7 @@ export interface Progress {
   chests: string[];
   puzzles: string[];
   gates: string[];
-  bosses: string[];
+  bosses: BossId[];
   flags: StoryFlag[];
 }
 

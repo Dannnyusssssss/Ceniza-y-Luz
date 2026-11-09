@@ -5,6 +5,7 @@ import { createProgress, maxQuarters, type Progress } from '../src/game/progress
 import {
   migrateSave,
   parseSave,
+  SAVE_MIGRATIONS,
   SAVE_VERSION,
   serializeSave,
   validateSave,
@@ -183,11 +184,65 @@ describe('versiones y migración', () => {
   it('un guardado viejo pasa por las migraciones hasta la versión actual', () => {
     // Formato hipotético anterior: se simula añadiendo una versión menor con su paso.
     const migrations: SaveMigrations = {
+      ...SAVE_MIGRATIONS,
       0: (save) => ({ ...save, sparks: save['chispas'] }),
     };
     const migrated = migrateSaveFromZero({ version: 0, character: 'alba', chispas: 77 }, migrations);
     expect(migrated?.['version']).toBe(SAVE_VERSION);
     expect(migrated?.['sparks']).toBe(77);
+  });
+
+  it('una partida de la versión 1 se conserva y empieza sin habilidades ni jefes', () => {
+    const old = {
+      version: 1,
+      character: 'ciro',
+      sparks: 120,
+      temple: 3,
+      chests: ['bosque-raiz', 'bosque-claro'],
+      gates: ['lumbre-portal', 'bosque-claro'],
+      puzzles: ['bosque-bloque'],
+      flags: ['introSeen', 'bladeTaken'],
+      place: { zone: 'bosque', entry: 'claro' },
+    };
+    const p = parseSave(JSON.stringify(old));
+    expect(p).toMatchObject({
+      character: 'ciro',
+      sparks: 120,
+      temple: 3,
+      chests: ['bosque-raiz', 'bosque-claro'],
+      gates: ['lumbre-portal', 'bosque-claro'],
+      puzzles: ['bosque-bloque'],
+      place: { zone: 'bosque', entry: 'claro' },
+      abilities: [],
+      bosses: [],
+    });
+  });
+
+  it('una partida de la versión 1 con datos que no existían los descarta', () => {
+    const p = parseSave(
+      JSON.stringify({ version: 1, character: 'alba', abilities: ['pulso'], bosses: ['guardian'] }),
+    );
+    expect(p?.abilities).toEqual([]);
+    expect(p?.bosses).toEqual([]);
+  });
+
+  it('guarda y recupera las habilidades, los jefes y las zonas nuevas', () => {
+    const p = createProgress('alba');
+    p.abilities.push('pulso', 'impulso');
+    p.bosses.push('guardian');
+    p.chests.push('cueva-tesoro');
+    p.gates.push('cueva-cristal');
+    p.puzzles.push('cienaga-antorchas');
+    p.place = { zone: 'cueva', entry: 'medio' };
+    p.respawn = { zone: 'cueva', entry: 'medio' };
+    expect(parseSave(serializeSave(p))).toEqual(p);
+  });
+
+  it('un guardado corrupto de la versión actual no da habilidades ni jefes inventados', () => {
+    const raw = { version: SAVE_VERSION, character: 'alba', abilities: ['vuelo', 5], bosses: ['otro', null] };
+    const p = parseSave(JSON.stringify(raw));
+    expect(p?.abilities).toEqual([]);
+    expect(p?.bosses).toEqual([]);
   });
 
   it('sin el paso de migración necesario devuelve null', () => {

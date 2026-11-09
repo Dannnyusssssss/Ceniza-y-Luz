@@ -63,6 +63,14 @@ export class Hud {
   private readonly sparks = h('p', { className: 'hud-sparks' });
   private readonly wave = h('p', { className: 'hud-wave' });
   private readonly dodge = h('p', { className: 'hud-dodge' });
+  private readonly pulse = h('p', { className: 'hud-dodge' });
+  private readonly dash = h('p', { className: 'hud-dodge' });
+  private readonly bossLabel = h('p', { className: 'hud-boss-label' });
+  private readonly bossFill = h('div', { className: 'hud-boss-fill' });
+  private readonly boss = h('div', { className: 'hud-boss' }, [
+    this.bossLabel,
+    h('div', { className: 'hud-boss-track' }, [this.bossFill]),
+  ]);
   private readonly banner = h('p', {
     className: 'hud-banner',
     attrs: { role: 'status', 'aria-live': 'polite' },
@@ -89,9 +97,14 @@ export class Hud {
       this.sparks,
       this.potions,
       this.dodge,
+      this.pulse,
+      this.dash,
     ]);
     const side = h('div', { className: 'hud-side' }, [this.objective, this.wave, this.dummyLabel]);
-    root.replaceChildren(top, side, this.banner, this.message, this.prompt, this.muted, this.hint);
+    root.replaceChildren(top, side, this.boss, this.banner, this.message, this.prompt, this.muted, this.hint);
+    this.boss.hidden = true;
+    this.pulse.hidden = true;
+    this.dash.hidden = true;
     this.muted.hidden = true;
     this.banner.hidden = true;
     this.message.hidden = true;
@@ -115,6 +128,9 @@ export class Hud {
       this.prompt.hidden = promptLabel === '';
     }
     this.dummyLabel.hidden = !s.dummyNear;
+    this.updateAbility(this.pulse, t.pulse, s.pulseWait);
+    this.updateAbility(this.dash, t.dash, s.dashWait);
+    this.updateBoss(s);
     const key = `${s.quarters}/${s.maxQuarters}|${s.sparks}|${s.potions}|${s.wave}|${nextIn}|${s.enemies}|${s.dodgeReady}|${s.objective}`;
     if (key === this.last) return;
     this.last = key;
@@ -138,6 +154,30 @@ export class Hud {
     }
     this.dodge.textContent = s.dodgeReady ? `● ${t.dodgeReady}` : `○ ${t.dodgeWait}`;
     this.dodge.classList.toggle('is-waiting', !s.dodgeReady);
+  }
+
+  /** Línea de una habilidad: con texto e icono, no solo con color. `wait` es null si aún no se ha aprendido. */
+  private updateAbility(line: HTMLElement, name: string, wait: number | null): void {
+    line.hidden = wait === null;
+    if (wait === null) return;
+    const ready = wait <= 0;
+    const text = ready ? `● ${name}: ${TEXTS.hud.abilityReady}` : `○ ${name}: ${TEXTS.hud.abilityWait(wait)}`;
+    if (line.textContent !== text) line.textContent = text;
+    line.classList.toggle('is-waiting', !ready);
+  }
+
+  /** Barra del jefe: longitud, número y estado en texto. */
+  private updateBoss(s: HudSnapshot): void {
+    const boss = s.boss;
+    this.boss.hidden = boss === null;
+    if (!boss) return;
+    const t = TEXTS.hud;
+    const base = t.bossLife(boss.name, Math.ceil(boss.health), boss.maxHealth);
+    const state = boss.armored ? ` · ${t.bossArmor}` : boss.staggered ? ` · ${t.bossStagger}` : '';
+    const text = base + state;
+    if (this.bossLabel.textContent !== text) this.bossLabel.textContent = text;
+    this.bossFill.style.width = `${Math.max(0, (boss.health / boss.maxHealth) * 100).toFixed(1)}%`;
+    this.bossFill.classList.toggle('is-armored', boss.armored);
   }
 
   /** Aviso grande y breve (inicio o final de oleada). */

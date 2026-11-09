@@ -137,7 +137,7 @@ export function buildLayout(zone: ZoneData): ZoneLayout {
     flowers,
     mushrooms,
     blocks: [...raised, ...treeBlocks, ...boundsOf(zone)],
-    cameraBlocks: raised.filter((b) => b.kind !== 'bound'),
+    cameraBlocks: raised.filter((b) => b.kind !== 'bound' && b.kind !== 'crack'),
   };
 }
 

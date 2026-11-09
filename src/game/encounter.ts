@@ -125,6 +125,26 @@ export function aliveEnemies(state: EncounterState): number {
   return state.enemies.filter(isAlive).length;
 }
 
+/** Un golpe a un enemigo, venga de la Hoja o del Pulso: daño, aviso y chispas si cae. `id` evita contarlo dos veces. */
+export function strikeEnemy(
+  state: EncounterState,
+  enemy: EnemyState,
+  damage: number,
+  id: number,
+  fromX: number,
+  fromZ: number,
+  events: EncounterEvent[],
+): void {
+  const dealt = hitEnemy(enemy, damage, id, fromX, fromZ);
+  if (dealt <= 0) return;
+  const killed = !isAlive(enemy);
+  events.push({ type: 'enemyHit', id: enemy.id, kind: enemy.kind, damage: dealt, killed });
+  if (killed) {
+    const [min, max] = enemy.stats.sparks;
+    spawnSparks(state.sparks, enemy.x, enemy.z, state.rng.int(min, max), state.rng);
+  }
+}
+
 /** Avanza el combate un paso fijo. El jugador ya se movió en este paso. */
 export function updateEncounter(state: EncounterState, dt: number, input: EncounterInput): EncounterEvent[] {
   const events: EncounterEvent[] = [];
@@ -151,14 +171,7 @@ export function updateEncounter(state: EncounterState, dt: number, input: Encoun
       )
         continue;
       const damage = Math.round(step.damage * (input.damageFactor ?? 1));
-      const dealt = hitEnemy(enemy, damage, combo.swingId, player.x, player.z);
-      if (dealt <= 0) continue;
-      const killed = !isAlive(enemy);
-      events.push({ type: 'enemyHit', id: enemy.id, kind: enemy.kind, damage: dealt, killed });
-      if (killed) {
-        const [min, max] = enemy.stats.sparks;
-        spawnSparks(state.sparks, enemy.x, enemy.z, state.rng.int(min, max), state.rng);
-      }
+      strikeEnemy(state, enemy, damage, combo.swingId, player.x, player.z, events);
     }
     if (slashProjectiles(state.projectiles, player.x, player.z, player.yaw, step.range, step.halfArc) > 0) {
       for (const p of state.projectiles) {

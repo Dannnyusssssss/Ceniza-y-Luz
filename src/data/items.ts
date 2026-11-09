@@ -1,7 +1,7 @@
 /** Objetos, precios y mejoras. Las chispas son la moneda. */
 
-export type KeyId = 'llave-claro';
-export const KEY_IDS: readonly KeyId[] = ['llave-claro'];
+export type KeyId = 'llave-claro' | 'sello-bruma';
+export const KEY_IDS: readonly KeyId[] = ['llave-claro', 'sello-bruma'];
 
 export type SpecialId = 'talisman';
 export const SPECIAL_IDS: readonly SpecialId[] = ['talisman'];
@@ -43,4 +43,25 @@ export const ITEM_BALANCE = {
   },
   /** Fragmentos de corazón que dan un corazón nuevo. */
   fragmentsPerHeart: 4,
+} as const;
+
+/** Las habilidades no gastan nada: solo tienen tiempo de espera. Unidades: metros, segundos. */
+export const ABILITY_BALANCE = {
+  pulso: {
+    cooldown: 1.1,
+    speed: 22,
+    range: 20,
+    radius: 0.32,
+    /** Daño base, antes del temple de la Hoja. */
+    damage: 14,
+    /** Si un objetivo queda a menos de este ángulo de donde se apunta, el disparo se ajusta hacia él. */
+    aimHalfAngle: 0.3,
+  },
+  impulso: {
+    cooldown: 1.8,
+    distance: 6.5,
+    duration: 0.24,
+    /** Por debajo de esta distancia no merece la pena salir: no se gasta la espera. */
+    minDistance: 0.6,
+  },
 } as const;

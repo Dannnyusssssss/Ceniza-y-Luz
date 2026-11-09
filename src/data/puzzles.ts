@@ -20,6 +20,8 @@ export interface SequencePuzzle {
   readonly order: readonly string[];
   /** Mural con los símbolos en orden: la pista siempre visible. */
   readonly mural: { readonly x: number; readonly z: number; readonly yaw: number };
+  /** Qué pieza es: piedra que se toca con E (por defecto), antorcha o prisma que se encienden con el Pulso. */
+  readonly piece?: 'stone' | 'torch' | 'prism';
 }
 
 /** Celda de la cuadrícula: [columna, fila]. */
@@ -74,6 +76,54 @@ export const PUZZLES: readonly PuzzleData[] = [
     blocks: [[2, 1]],
     plates: [[4, 4]],
     reset: { x: 5, z: -8.5 },
+  },
+  {
+    kind: 'blocks',
+    id: 'cienaga-bloques',
+    zone: 'cienaga',
+    origin: { x: -28, z: -30 },
+    cellSize: 2,
+    cols: 6,
+    rows: 6,
+    solids: [
+      [3, 3],
+      [0, 3],
+    ],
+    blocks: [
+      [1, 1],
+      [4, 2],
+    ],
+    plates: [
+      [2, 4],
+      [4, 4],
+    ],
+    reset: { x: -15, z: -27.5 },
+  },
+  {
+    kind: 'sequence',
+    id: 'cienaga-antorchas',
+    zone: 'cienaga',
+    piece: 'torch',
+    switches: [
+      { id: 'antorcha-luna', symbol: 'luna', x: -9, z: -7 },
+      { id: 'antorcha-sol', symbol: 'sol', x: -16, z: -3 },
+      { id: 'antorcha-estrella', symbol: 'estrella', x: 13, z: -5 },
+    ],
+    order: ['antorcha-estrella', 'antorcha-sol', 'antorcha-luna'],
+    mural: { x: -4.5, z: -13, yaw: Math.PI / 2 },
+  },
+  {
+    kind: 'sequence',
+    id: 'cueva-prismas',
+    zone: 'cueva',
+    piece: 'prism',
+    switches: [
+      { id: 'prisma-luna', symbol: 'luna', x: -14, z: -12 },
+      { id: 'prisma-sol', symbol: 'sol', x: 14, z: -12 },
+      { id: 'prisma-estrella', symbol: 'estrella', x: 0, z: -5 },
+    ],
+    order: ['prisma-luna', 'prisma-sol', 'prisma-estrella'],
+    mural: { x: -4.5, z: -22, yaw: Math.PI / 2 },
   },
 ];
 

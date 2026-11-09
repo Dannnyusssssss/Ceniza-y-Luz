@@ -26,7 +26,13 @@ export type SoundId =
   | 'solved'
   | 'talk'
   | 'potion'
-  | 'buy';
+  | 'buy'
+  | 'pulse'
+  | 'dash'
+  | 'shatter'
+  | 'learn'
+  | 'bossWarn'
+  | 'bossStage';
 
 /** Volumen general (antes del compresor). */
 const MASTER_VOLUME = 0.32;
@@ -167,6 +173,34 @@ export class Sfx {
       case 'buy':
         this.tone(out, now, 'sine', 1046, 1318, 0.14, 0.14);
         break;
+      case 'pulse':
+        this.tone(out, now, 'sine', 660, 1320, 0.2, 0.22);
+        this.noiseBurst(out, now, 0.14, 2400, 3600, 0.1);
+        break;
+      case 'dash':
+        this.noiseBurst(out, now, 0.26, 500, 2400, 0.3);
+        this.tone(out, now, 'triangle', 220, 440, 0.2, 0.14);
+        break;
+      case 'shatter':
+        this.noiseBurst(out, now, 0.6, 3000, 700, 0.3);
+        this.tone(out, now, 'triangle', 1568, 784, 0.4, 0.14);
+        this.tone(out, now + 0.05, 'triangle', 2093, 1046, 0.35, 0.1);
+        break;
+      case 'learn':
+        this.tone(out, now, 'triangle', 392, 392, 0.2, 0.2);
+        this.tone(out, now + 0.18, 'triangle', 587, 587, 0.2, 0.2);
+        this.tone(out, now + 0.36, 'sine', 784, 1175, 0.6, 0.18);
+        break;
+      case 'bossWarn': {
+        // Más grave cuanto más ancho es el ataque.
+        const base = [300, 420, 560][variant] ?? 420;
+        this.tone(out, now, 'sawtooth', base, base * 1.35, 0.45, 0.14);
+        break;
+      }
+      case 'bossStage':
+        this.tone(out, now, 'sine', 120, 60, 1.1, 0.4);
+        this.noiseBurst(out, now, 0.9, 400, 1800, 0.18);
+        break;
     }
   }
 
@@ -218,6 +252,11 @@ export class Sfx {
     src.connect(filter).connect(gain).connect(out);
     src.start(start);
     src.stop(start + duration + 0.02);
+  }
+
+  /** Contexto y salida de audio, ya desbloqueados, para la música. Null si aún no hay audio. */
+  get output(): { readonly ctx: AudioContext; readonly out: AudioNode } | null {
+    return this.ctx && this.master ? { ctx: this.ctx, out: this.master } : null;
   }
 
   dispose(): void {

@@ -36,6 +36,7 @@ export const FOV_RANGE: NumberRange = { min: 55, max: 100, step: 1, default: 70 
 export interface Settings {
   readonly version: number;
   readonly muted: boolean;
+  readonly music: boolean;
   readonly reduceFlashing: boolean;
   readonly reduceMotion: boolean;
   readonly sensitivity: number;

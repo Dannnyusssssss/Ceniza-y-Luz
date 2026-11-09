@@ -1,4 +1,5 @@
 import type { BlockData } from '../data/arena';
+import type { AbilityId } from '../data/items';
 import {
   puzzleById,
   PUZZLES,
@@ -6,10 +7,11 @@ import {
   type PuzzleData,
   type SequencePuzzle,
 } from '../data/puzzles';
-import type { GateData, GateKey, NpcId, SignTextId, ZoneData, ZoneId } from '../data/zones';
+import type { BossId, GateData, GateKey, NpcId, SignTextId, ZoneData, ZoneId } from '../data/zones';
 import { ZONES } from '../data/zones';
 import { groundHeight } from '../world/terrain';
 import { buildLayout, exitAt, gateBlock, type ZoneLayout } from '../world/zones';
+import { dashCrosses } from './abilities';
 import { hasFlag, setFlag, type Progress } from './progress';
 import { openChest, type GrantResult } from './inventory';
 import {
@@ -37,6 +39,7 @@ export type Interactable =
       readonly z: number;
     }
   | { readonly kind: 'altar'; readonly x: number; readonly z: number }
+  | { readonly kind: 'shrine'; readonly ability: AbilityId; readonly x: number; readonly z: number }
   | { readonly kind: 'gate'; readonly id: string; readonly x: number; readonly z: number }
   | { readonly kind: 'sign'; readonly text: SignTextId; readonly x: number; readonly z: number }
   | {
@@ -62,6 +65,8 @@ export type AdventureEvent =
   | { readonly type: 'chestOpened'; readonly id: string; readonly result: GrantResult }
   | { readonly type: 'rest'; readonly beacon: string }
   | { readonly type: 'bladeTaken' }
+  | { readonly type: 'abilityLearned'; readonly ability: AbilityId }
+  | { readonly type: 'gateShattered'; readonly id: string; readonly x: number; readonly z: number }
   /** `byKey`: la abrió el jugador; si no, se abrió como efecto de otra cosa (y esa ya tiene su aviso). */
   | { readonly type: 'gateOpened'; readonly id: string; readonly byKey: boolean }
   | { readonly type: 'gateLocked'; readonly id: string; readonly opens: GateKey }
@@ -137,14 +142,18 @@ export function gateRequirementMet(progress: Progress, opens: GateKey): boolean 
       return hasFlag(progress, opens.flag);
     case 'ability':
       return progress.abilities.includes(opens.ability);
+    case 'boss':
+      return progress.bosses.includes(opens.boss);
+    case 'shatter':
+      return false;
   }
 }
 
-/** Abre las puertas que no piden una llave y cuya condición ya se cumple. Devuelve las que se abrieron. */
+/** Abre las puertas que no se abren a mano y cuya condición ya se cumple. Devuelve las que se abrieron. */
 function refreshGates(adventure: AdventureState): string[] {
   const opened: string[] = [];
   for (const gate of adventure.zone.gates) {
-    if (gate.opens.kind === 'key' || isGateOpen(adventure, gate)) continue;
+    if (gate.opens.kind === 'key' || gate.opens.kind === 'shatter' || isGateOpen(adventure, gate)) continue;
     if (gateRequirementMet(adventure.progress, gate.opens)) {
       adventure.progress.gates.push(gate.id);
       opened.push(gate.id);
@@ -166,6 +175,7 @@ export function refreshBlocks(adventure: AdventureState): void {
   for (const c of zone.chests) solid(c.x, c.z, 0.55, 0.9);
   for (const b of zone.beacons) solid(b.x, b.z, 0.5, 2.2);
   for (const n of zone.npcs) solid(n.x, n.z, 0.32, 1.6);
+  for (const s of zone.shrines) solid(s.x, s.z, 0.7, 1.4);
   for (const s of zone.signs) solid(s.x, s.z, 0.2, 1.4);
   for (const data of zonePuzzles(zone)) {
     const state = adventure.puzzles.get(data.id);
@@ -197,6 +207,10 @@ export function listInteractables(adventure: AdventureState): Interactable[] {
   for (const b of zone.beacons) list.push({ kind: 'beacon', id: b.id, entry: b.entry, x: b.x, z: b.z });
   if (zone.altar && !hasFlag(progress, 'bladeTaken'))
     list.push({ kind: 'altar', x: zone.altar.x, z: zone.altar.z });
+  for (const s of zone.shrines) {
+    if (!progress.abilities.includes(s.ability))
+      list.push({ kind: 'shrine', ability: s.ability, x: s.x, z: s.z });
+  }
   for (const s of zone.signs) list.push({ kind: 'sign', text: s.text, x: s.x, z: s.z });
   for (const g of zone.gates) {
     if (!isGateOpen(adventure, g)) list.push({ kind: 'gate', id: g.id, x: g.x, z: g.z });
@@ -205,6 +219,8 @@ export function listInteractables(adventure: AdventureState): Interactable[] {
     const state = adventure.puzzles.get(data.id);
     if (!state || state.solved) continue;
     if (data.kind === 'sequence') {
+      // Las antorchas y los prismas no se tocan: se encienden con el Pulso.
+      if (usesPulse(data)) continue;
       for (const s of data.switches) list.push({ kind: 'switch', puzzle: data.id, id: s.id, x: s.x, z: s.z });
     } else {
       state.blocks.forEach((cell, index) => {
@@ -228,6 +244,7 @@ function reachOf(item: Interactable, adventure: AdventureState): number {
       return data.cellSize / 2 + REACH * 0.6;
     }
     case 'altar':
+    case 'shrine':
       return 1 + REACH;
     default:
       return REACH + 0.5;
@@ -277,6 +294,14 @@ export function interact(
       if (hasFlag(progress, 'bladeTaken')) return [];
       setFlag(progress, 'bladeTaken');
       const events: AdventureEvent[] = [{ type: 'bladeTaken' }];
+      for (const id of refreshGates(adventure)) events.push({ type: 'gateOpened', id, byKey: false });
+      refreshBlocks(adventure);
+      return events;
+    }
+    case 'shrine': {
+      if (progress.abilities.includes(item.ability)) return [];
+      progress.abilities.push(item.ability);
+      const events: AdventureEvent[] = [{ type: 'abilityLearned', ability: item.ability }];
       for (const id of refreshGates(adventure)) events.push({ type: 'gateOpened', id, byKey: false });
       refreshBlocks(adventure);
       return events;
@@ -350,6 +375,65 @@ function useBlock(
   if (!pushBlock(state, data, index, dc, dr)) return [{ type: 'blockStuck' }];
   const events: AdventureEvent[] = [{ type: 'blockPushed' }];
   if (state.solved) events.push(...solvePuzzle(adventure, puzzleId));
+  refreshBlocks(adventure);
+  return events;
+}
+
+/** True si la pieza del puzzle se enciende con el Pulso en lugar de tocarla. */
+export function usesPulse(data: SequencePuzzle): boolean {
+  return data.piece === 'torch' || data.piece === 'prism';
+}
+
+/** Una antorcha o un prisma que aún se puede encender. */
+export interface PulseTarget {
+  readonly puzzle: string;
+  readonly id: string;
+  readonly x: number;
+  readonly z: number;
+}
+
+/** Las piezas de la zona que responden al Pulso. */
+export function pulseTargets(adventure: AdventureState): PulseTarget[] {
+  const list: PulseTarget[] = [];
+  for (const data of zonePuzzles(adventure.zone)) {
+    if (data.kind !== 'sequence' || !usesPulse(data) || adventure.puzzles.get(data.id)?.solved) continue;
+    for (const s of data.switches) list.push({ puzzle: data.id, id: s.id, x: s.x, z: s.z });
+  }
+  return list;
+}
+
+/** El Pulso alcanzó una pieza: cuenta igual que tocar una piedra. */
+export function lightPiece(adventure: AdventureState, target: PulseTarget): AdventureEvent[] {
+  return useSwitch(adventure, target.puzzle, target.id);
+}
+
+/** Rompe las barreras de cristal que cruza una carrera desde (x, z) hacia (dirX, dirZ). */
+export function shatterGates(
+  adventure: AdventureState,
+  x: number,
+  z: number,
+  dirX: number,
+  dirZ: number,
+  radius: number,
+): AdventureEvent[] {
+  const events: AdventureEvent[] = [];
+  for (const gate of adventure.zone.gates) {
+    if (gate.opens.kind !== 'shatter' || isGateOpen(adventure, gate)) continue;
+    if (!dashCrosses(x, z, dirX, dirZ, radius, gateBlock(gate))) continue;
+    adventure.progress.gates.push(gate.id);
+    events.push({ type: 'gateShattered', id: gate.id, x: gate.x, z: gate.z });
+  }
+  if (events.length > 0) refreshBlocks(adventure);
+  return events;
+}
+
+/** Se venció a un jefe: queda anotado y se abre lo que guardaba. */
+export function defeatBoss(adventure: AdventureState, boss: BossId): AdventureEvent[] {
+  const { progress } = adventure;
+  if (progress.bosses.includes(boss)) return [];
+  progress.bosses.push(boss);
+  const events: AdventureEvent[] = [];
+  for (const id of refreshGates(adventure)) events.push({ type: 'gateOpened', id, byKey: false });
   refreshBlocks(adventure);
   return events;
 }

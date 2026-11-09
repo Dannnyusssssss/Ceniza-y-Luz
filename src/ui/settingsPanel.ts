@@ -12,7 +12,7 @@ import {
 import { TEXTS } from '../data/texts';
 import { button, h, uniqueId } from './dom';
 
-type BooleanKey = 'muted' | 'reduceFlashing' | 'reduceMotion' | 'invertY';
+type BooleanKey = 'muted' | 'music' | 'reduceFlashing' | 'reduceMotion' | 'invertY';
 
 /** Formulario de ajustes. Cada cambio se aplica y se guarda al instante. */
 export function createSettingsPanel(
@@ -118,6 +118,7 @@ export function createSettingsPanel(
   return h('section', { className: 'panel', attrs: { 'aria-labelledby': 'settings-title' } }, [
     h('h2', { text: t.title, attrs: { id: 'settings-title' } }),
     checkbox('muted', t.muted),
+    checkbox('music', t.music),
     checkbox('reduceFlashing', t.reduceFlashing),
     checkbox('reduceMotion', t.reduceMotion),
     range('sensitivity', t.sensitivity, SENSITIVITY_RANGE, (v) => v.toFixed(1)),

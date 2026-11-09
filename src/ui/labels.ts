@@ -19,12 +19,15 @@ export function promptText(item: Interactable, progress: Progress): string {
       return t.beacon;
     case 'altar':
       return t.altar;
+    case 'shrine':
+      return t.shrine[item.ability];
     case 'sign':
       return t.sign;
     case 'gate': {
       const gate = ZONES[progress.place.zone].gates.find((g) => g.id === item.id);
       const canOpen = gate && gate.opens.kind === 'key' && gateRequirementMet(progress, gate.opens);
-      return canOpen ? t.gateKey : t.gate;
+      if (!canOpen) return t.gate;
+      return gate.style === 'mist' ? t.gateSeal : t.gateKey;
     }
     case 'switch': {
       const data = puzzleById(item.puzzle);
@@ -58,7 +61,7 @@ export function adventureMessage(event: AdventureEvent, progress: Progress): str
                 ITEM_BALANCE.fragmentsPerHeart,
               );
         case 'key':
-          return t.chest.key;
+          return t.chest.key[contents.key];
         case 'potion':
           return overflow ? t.chest.potionFull : t.chest.potion(contents.amount);
       }
@@ -67,9 +70,15 @@ export function adventureMessage(event: AdventureEvent, progress: Progress): str
     case 'bladeTaken':
       return t.bladeTaken;
     case 'gateOpened':
-      return event.byKey ? t.gateOpen : null;
+      if (!event.byKey) return null;
+      return event.id === 'bosque-bruma' ? t.mistOpen : t.gateOpen;
     case 'gateLocked':
+      if (event.opens.kind === 'flag' && event.opens.flag === 'fortressOpen') return t.fortressClosed;
       return t.gateLocked[event.opens.kind];
+    case 'abilityLearned':
+      return t.abilityLearned[event.ability];
+    case 'gateShattered':
+      return t.gateShattered;
     case 'switchPressed':
       return event.result === 'wrong' ? t.switchWrong : event.result === 'advance' ? t.switchOk : null;
     case 'blockStuck':

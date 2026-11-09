@@ -8,6 +8,7 @@ import type { NpcId, ExitData } from '../data/zones';
 import type { SaveSlot } from '../engine/saveSlot';
 import type { GameSession } from '../engine/session';
 import type { AdventureEvent } from '../game/adventure';
+import type { GuardianEvent } from '../game/guardian';
 import {
   advanceDialogue,
   currentLine,
@@ -86,6 +87,7 @@ export class App {
     session.onRetryReady = () => this.die();
     session.onAdventure = (event) => this.handleAdventure(event);
     session.onExit = (exit) => this.travel(exit);
+    session.onGuardian = (event) => this.handleGuardian(event);
     hud.setDummy(session.dummy);
     settings.onChange((s) => this.applyUiSettings(s));
     this.applyUiSettings(settings.value);
@@ -146,7 +148,7 @@ export class App {
 
   /** Tras elegir personaje: la arena empieza ya; la aventura, con la intro. */
   private confirmCharacter(): void {
-    this.session.sfx.unlock();
+    this.session.unlockAudio();
     if (this.session.mode === 'arena') {
       this.session.beginPlay();
       this.enterPlaying();
@@ -194,7 +196,7 @@ export class App {
   /** Continuar la partida guardada. */
   private continueGame(): void {
     if (!this.saved) return;
-    this.session.sfx.unlock();
+    this.session.unlockAudio();
     this.selected = this.saved.character;
     this.session.continueGame(this.saved);
     this.saved = null;
@@ -224,6 +226,7 @@ export class App {
 
   /** Detiene la lógica y suelta el puntero para usar un menú. */
   private stopPlaying(): void {
+    this.session.music.setPaused(true);
     this.session.playing = false;
     this.canvas.classList.remove('is-playing');
     this.input.gameplayActive = false;
@@ -234,13 +237,14 @@ export class App {
   /** Pasa a jugar. Se llama siempre desde un clic o una tecla, así se puede pedir la captura del puntero. */
   private enterPlaying(): void {
     // El audio solo puede empezar tras una acción del jugador; esta lo es.
-    this.session.sfx.unlock();
+    this.session.unlockAudio();
     this.state = 'playing';
     this.menus.hide();
     this.hud.setVisible(true);
     this.hud.setPointerLocked(this.input.isLocked());
     this.input.state.clear();
     this.input.gameplayActive = true;
+    this.session.music.setPaused(false);
     this.session.playing = true;
     this.canvas.classList.add('is-playing');
     this.canvas.focus();
@@ -329,7 +333,41 @@ export class App {
       default: {
         const message = adventureMessage(event, progress);
         if (message) this.hud.showMessage(message);
+        // Lo que no se debe repetir queda guardado en cuanto ocurre.
+        if (event.type === 'abilityLearned') this.save();
       }
+    }
+  }
+
+  /** Avisos del jefe en pantalla: toda señal sonora tiene también su señal visual. */
+  private handleGuardian(event: GuardianEvent): void {
+    const t = TEXTS.world.guardian;
+    switch (event.type) {
+      case 'guardianAwake':
+        this.hud.showBanner(t.awake);
+        break;
+      case 'guardianWindup':
+        this.hud.showBanner(t.windup[event.attack]);
+        break;
+      case 'guardianStage':
+        this.hud.showBanner(t.stage);
+        break;
+      case 'guardianBlocked':
+        this.hud.showMessage(t.blocked);
+        break;
+      case 'guardianArmorBroken':
+        this.hud.showBanner(t.broken);
+        break;
+      case 'guardianArmorBack':
+        this.hud.showMessage(t.armorBack);
+        break;
+      case 'guardianReset':
+        this.hud.showMessage(t.reset);
+        break;
+      case 'guardianDefeated':
+        this.hud.showMessage(t.defeated);
+        if (!this.save()) this.hud.showMessage(TEXTS.world.autosaveFailed);
+        break;
     }
   }
 

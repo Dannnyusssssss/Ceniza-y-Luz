@@ -12,6 +12,8 @@ export interface QualityPreset {
   /** Muestras de antialiasing del pipeline (1 = sin MSAA). */
   readonly msaaSamples: number;
   readonly fxaa: boolean;
+  /** Haces de luz en las zonas oscuras (mallas brillantes). */
+  readonly lightShafts: boolean;
 }
 
 export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualityPreset>> = {
@@ -22,6 +24,7 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualityPreset>> = {
     bloom: false,
     msaaSamples: 1,
     fxaa: true,
+    lightShafts: false,
   },
   medium: {
     hardwareScaling: 1,
@@ -30,6 +33,7 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualityPreset>> = {
     bloom: true,
     msaaSamples: 1,
     fxaa: true,
+    lightShafts: true,
   },
   high: {
     hardwareScaling: 1,
@@ -38,6 +42,7 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualityPreset>> = {
     bloom: true,
     msaaSamples: 4,
     fxaa: true,
+    lightShafts: true,
   },
 };
 

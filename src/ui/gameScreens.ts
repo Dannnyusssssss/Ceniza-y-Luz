@@ -146,7 +146,12 @@ export function createInventoryPanel(
       h('li', { text: hasBlade ? t.temple(progress.temple, ITEM_BALANCE.temple.maxLevel) : t.noBlade }),
       h('li', { text: t.sparks(progress.sparks) }),
       potions,
-      h('li', { text: `${t.keys}: ${progress.keys.length > 0 ? t.keyName : t.noKeys}` }),
+      h('li', {
+        text: `${t.keys}: ${progress.keys.length > 0 ? progress.keys.map((k) => t.keyNames[k]).join(', ') : t.noKeys}`,
+      }),
+      h('li', {
+        text: `${t.abilities}: ${progress.abilities.length > 0 ? progress.abilities.map((a) => t.abilityNames[a]).join(', ') : t.noAbilities}`,
+      }),
       h('li', {
         text: `${t.specials}: ${progress.specials.includes('talisman') ? t.talisman : t.noSpecials}`,
       }),

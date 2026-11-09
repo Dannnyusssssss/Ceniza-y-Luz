@@ -7,6 +7,7 @@ import type { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGener
 import { approach, wrapAngle } from '../core/math';
 import { MODELS } from '../data/generated/models';
 import { NPCS } from '../data/npcs';
+import type { AbilityId } from '../data/items';
 import { PUZZLES, type BlocksPuzzle, type SequencePuzzle } from '../data/puzzles';
 import type { NpcId, ZoneData } from '../data/zones';
 import { MODELS_URL, type LoadedModel } from '../engine/models';
@@ -28,6 +29,10 @@ export interface PropModels {
   readonly pushblock: LoadedModel;
   readonly plate: LoadedModel;
   readonly gate: LoadedModel;
+  readonly torch: LoadedModel;
+  readonly prism: LoadedModel;
+  readonly shrine: LoadedModel;
+  readonly crystalWall: LoadedModel;
   readonly blade: LoadedModel;
   readonly npcs: Readonly<Record<NpcId, LoadedModel>>;
 }
@@ -40,6 +45,15 @@ const GATE_SPEED = 1.1;
 /** Velocidad a la que se ve deslizar un bloque empujado (m/s). */
 const BLOCK_SPEED = 5;
 const SYMBOL_COLORS = { idle: '#7f93a8', lit: '#ffd98a' };
+/** Altura de cada pieza: del símbolo que la identifica y de la llama cuando se enciende. */
+const PIECE_HEIGHTS = {
+  stone: { symbol: 1.45, flame: 0 },
+  torch: { symbol: 2.65, flame: 2.05 },
+  prism: { symbol: 2.35, flame: 1.28 },
+} as const;
+const ORB_COLORS: Readonly<Record<AbilityId, string>> = { pulso: '#fff0b0', impulso: '#9fe9ff' };
+/** Velocidad a la que se hunde una barrera de cristal rota. */
+const CRYSTAL_SPEED = 2.4;
 const CROSSFADE = 0.2;
 /** Más lejos de esto un objeto no se dibuja (la niebla ya casi lo tapa): ahorra llamadas de dibujo. */
 const VIEW_DISTANCE = 48;
@@ -172,6 +186,19 @@ interface SwitchView {
   readonly puzzle: SequencePuzzle;
   readonly id: string;
   readonly symbol: Mesh | null;
+  readonly flame: Mesh | null;
+}
+
+interface CrystalWallView {
+  readonly data: ZoneData['gates'][number];
+  readonly placed: PlacedModel;
+  gone: number;
+}
+
+interface ShrineView {
+  readonly ability: AbilityId;
+  readonly orb: Mesh;
+  readonly baseY: number;
 }
 
 interface PlateView {
@@ -197,6 +224,8 @@ export class ZoneProps {
   private readonly switches: SwitchView[] = [];
   private readonly plates: PlateView[] = [];
   private readonly npcs: NpcView[] = [];
+  private readonly crystalWalls: CrystalWallView[] = [];
+  private readonly shrines: ShrineView[] = [];
   private altarBlade: PlacedModel | null = null;
   private time = 0;
 
@@ -223,7 +252,38 @@ export class ZoneProps {
       this.chests.push(view);
     }
     for (const b of zone.beacons) this.place(models.beacon, b.x, y(b.x, b.z), b.z, 0);
+    for (const s of zone.shrines) {
+      const ground = y(s.x, s.z);
+      this.place(models.shrine, s.x, ground, s.z, 0);
+      const builder = new MeshBuilder();
+      builder.sphere(0.3, '#ffffff', { x: 0, y: 0, z: 0 }, 2);
+      const orb = builder.build(
+        `orb-${s.ability}`,
+        scene,
+        materials.get(ORB_COLORS[s.ability], { unlit: true }),
+        false,
+      );
+      if (orb) {
+        orb.position.set(s.x, ground + 1.95, s.z);
+        this.shrines.push({ ability: s.ability, orb, baseY: ground + 1.95 });
+      }
+    }
     for (const gate of zone.gates) {
+      // La barrera de niebla la dibuja el entorno; aquí solo están las rejas y el cristal.
+      if (gate.style === 'mist') continue;
+      if (gate.style === 'crystal') {
+        const wall = this.place(
+          models.crystalWall,
+          gate.x,
+          y(gate.x, gate.z),
+          gate.z,
+          gate.alongX ? 0 : Math.PI / 2,
+        );
+        wall.pivot.scaling.x = gate.width / GATE_WIDTH;
+        const gone = isGateOpen(adventure, gate) ? 1 : 0;
+        this.crystalWalls.push({ data: gate, placed: wall, gone });
+        continue;
+      }
       const placed = this.place(
         models.gate,
         gate.x,
@@ -283,18 +343,33 @@ export class ZoneProps {
   }
 
   private addSwitches(data: SequencePuzzle): void {
+    const piece = data.piece ?? 'stone';
+    const model =
+      piece === 'torch' ? this.models.torch : piece === 'prism' ? this.models.prism : this.models.switchStone;
+    const heights = PIECE_HEIGHTS[piece];
     for (const s of data.switches) {
       const ground = groundHeight(this.zone, s.x, s.z);
-      this.place(this.models.switchStone, s.x, ground, s.z, 0);
+      this.place(model, s.x, ground, s.z, 0);
       const builder = new MeshBuilder();
       // Blanco: el material decide el color (apagado o encendido).
-      builder.symbol(s.symbol, 0.26, '#ffffff', { x: s.x, y: ground + 1.45, z: s.z });
+      builder.symbol(s.symbol, 0.26, '#ffffff', { x: s.x, y: ground + heights.symbol, z: s.z });
       const symbol = builder.build(
         `symbol-${s.id}`,
         this.scene,
         this.materials.get(SYMBOL_COLORS.idle, { unlit: true }),
       );
-      this.switches.push({ puzzle: data, id: s.id, symbol });
+      let flame: Mesh | null = null;
+      if (heights.flame > 0) {
+        const glow = new MeshBuilder();
+        glow.sphere(0.36, '#ffffff', { x: s.x, y: ground + heights.flame, z: s.z, sy: 1.25 });
+        flame = glow.build(
+          `flame-${s.id}`,
+          this.scene,
+          this.materials.get(SYMBOL_COLORS.lit, { unlit: true }),
+        );
+        flame?.setEnabled(false);
+      }
+      this.switches.push({ puzzle: data, id: s.id, symbol, flame });
     }
   }
 
@@ -388,6 +463,21 @@ export class ZoneProps {
       const lit = !!state && (state.solved || order < state.pressed);
       const color = lit ? SYMBOL_COLORS.lit : SYMBOL_COLORS.idle;
       view.symbol.material = this.materials.get(color, { unlit: true });
+      view.flame?.setEnabled(lit);
+    }
+    for (const view of this.crystalWalls) {
+      const target = isGateOpen(adventure, view.data) ? 1 : 0;
+      if (view.gone !== target) {
+        view.gone = approach(view.gone, target, CRYSTAL_SPEED * dt);
+        view.placed.pivot.scaling.y = 1 - view.gone;
+      }
+      // Va después del recorte por distancia: una barrera rota no vuelve a activarse.
+      if (view.gone >= 1) view.placed.pivot.setEnabled(false);
+    }
+    for (const view of this.shrines) {
+      const learned = progress.abilities.includes(view.ability);
+      view.orb.setEnabled(!learned);
+      if (!learned && !reduceMotion) view.orb.position.y = view.baseY + Math.sin(this.time * 1.4) * 0.06;
     }
     for (const npc of this.npcs) {
       const diff = wrapAngle(npc.targetYaw - npc.yaw);
@@ -416,7 +506,13 @@ export class ZoneProps {
     this.all.length = 0;
     for (const npc of this.npcs) npc.actor.dispose();
     this.npcs.length = 0;
-    for (const view of this.switches) view.symbol?.dispose();
+    for (const view of this.switches) {
+      view.symbol?.dispose();
+      view.flame?.dispose();
+    }
     this.switches.length = 0;
+    for (const view of this.shrines) view.orb.dispose();
+    this.shrines.length = 0;
+    this.crystalWalls.length = 0;
   }
 }

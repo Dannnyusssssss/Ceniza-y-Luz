@@ -6,18 +6,22 @@ import { CHARACTERS, type CharacterId } from '../data/characters';
 import { QUALITY_PRESETS } from '../data/quality';
 import type { ZonePalette } from '../data/palettes';
 import type { NpcId } from '../data/zones';
-import type { AdventureState } from '../game/adventure';
+import { isGateOpen, type AdventureState } from '../game/adventure';
 import { currentStep, type ComboState } from '../game/combat';
+import { dashProgress, type AbilityState } from '../game/abilities';
 import { dodgeProgress } from '../game/dodge';
 import type { DummyState } from '../game/dummy';
 import type { EncounterState } from '../game/encounter';
 import { flashIntensity, shakeOffset } from '../game/feedback';
+import type { GuardianState } from '../game/guardian';
 import { isDead } from '../game/health';
 import type { PlayerState } from '../game/player';
 import { applyLook, updateCameraPose, type CameraRig, type LookInput } from '../world/cameraRig';
 import { groundHeight } from '../world/terrain';
 import { ARROW_CAMERA_SPEED, MOUSE_CAMERA_SPEED } from '../data/controls';
+import { AbilityView } from '../render/abilityView';
 import { CharacterView } from '../render/characterView';
+import { GuardianView } from '../render/guardianView';
 import { DummyView } from '../render/dummyModel';
 import { EncounterView } from '../render/encounterView';
 import { ZoneEnvironment } from '../render/zoneEnvironment';
@@ -47,6 +51,8 @@ export interface ViewState {
   readonly encounter: EncounterState;
   readonly playing: boolean;
   readonly hitStop: number;
+  readonly abilities: AbilityState;
+  readonly guardian: GuardianState | null;
 }
 
 /**
@@ -62,6 +68,9 @@ export class SessionView {
   private environment: ZoneEnvironment | null = null;
   private props: ZoneProps | null = null;
   private intro: IntroDirector | null = null;
+  private readonly abilityView: AbilityView;
+  private guardianView: GuardianView | null = null;
+  private groundAt: (x: number, z: number) => number = () => 0;
 
   constructor(
     engine: AbstractEngine,
@@ -76,6 +85,7 @@ export class SessionView {
     this.character = this.buildCharacter(characterId);
     this.dummyView = new DummyView(world.scene, assets.dummy, world.materials, world.shadows);
     this.encounterView = new EncounterView(world.scene, assets.enemies, world.materials, world.shadows);
+    this.abilityView = new AbilityView(world.scene, world.materials, () => this.groundAt);
     settings.onChange((s) => {
       const q = QUALITY_PRESETS[s.quality];
       engine.setHardwareScalingLevel(q.hardwareScaling);
@@ -113,6 +123,14 @@ export class SessionView {
     this.environment?.dispose();
     this.environment = null;
     this.encounterView.clear();
+    this.abilityView.clear();
+    this.guardianView?.dispose();
+    this.guardianView = null;
+  }
+
+  /** Destello del jefe al recibir un golpe (quien llama respeta el límite de 3 por segundo). */
+  flashGuardian(): void {
+    this.guardianView?.flash();
   }
 
   /** Crea lo que se ve de la zona actual de la aventura. */
@@ -125,7 +143,11 @@ export class SessionView {
     setShadowExtent(this.world, zone.shadowExtent);
     this.environment = new ZoneEnvironment(scene, zone, adventure.layout, look, materials, shadows);
     this.props = new ZoneProps(scene, zone, this.assets.props, materials, shadows, adventure, { npcs });
-    this.encounterView.setGround((x, z) => groundHeight(zone, x, z));
+    this.groundAt = (x, z) => groundHeight(zone, x, z);
+    this.encounterView.setGround(this.groundAt);
+    if (zone.boss && !adventure.progress.bosses.includes(zone.boss.id)) {
+      this.guardianView = new GuardianView(scene, this.assets.guardian, materials, shadows, this.groundAt);
+    }
     this.dummyView.setVisible(zone.dummy !== null);
   }
 
@@ -201,12 +223,18 @@ export class SessionView {
 
   /** Dibuja un fotograma: entorno, objetos, personaje, muñeco y combate. */
   render(state: ViewState, feedback: CombatFeedback, frameSeconds: number, alpha: number): void {
-    const { player: p, encounter, adventure, combo, dummy, playing, hitStop } = state;
+    const { player: p, encounter, adventure, combo, dummy, playing, hitStop, abilities, guardian } = state;
     const s = this.settings.value;
     const health = encounter.health;
     const zone = adventure.zone;
     const animSeconds = playing && hitStop <= 0 ? frameSeconds : 0;
-    this.environment?.update(frameSeconds, s.reduceMotion);
+    const mist = zone.gates.find((g) => g.style === 'mist');
+    this.environment?.update(
+      frameSeconds,
+      s.reduceMotion,
+      mist !== undefined && isGateOpen(adventure, mist),
+      QUALITY_PRESETS[s.quality].lightShafts,
+    );
     // Los aldeanos y los objetos siguen vivos en los diálogos y en la pantalla de elección.
     this.props?.update(adventure, frameSeconds, s.reduceMotion, p.x, p.z);
     if (this.intro) {
@@ -223,7 +251,7 @@ export class SessionView {
     this.character.update(
       {
         speed: playing ? p.speed : 0,
-        dodge: dodgeProgress(p.dodge),
+        dodge: dashProgress(abilities) ?? dodgeProgress(p.dodge),
         attack: step ? { step: combo.step, time: combo.time } : null,
         hurt: health.sinceHit,
         dead: isDead(health) ? health.deadFor : null,
@@ -238,5 +266,13 @@ export class SessionView {
       this.dummyView.update(dummy, flash, s.reduceMotion, animSeconds, groundHeight(zone, dummy.x, dummy.z));
     }
     this.encounterView.update(encounter, alpha, animSeconds, s.reduceFlashing, s.reduceMotion, x, z);
+    this.abilityView.update(abilities, alpha);
+    if (guardian && this.guardianView) {
+      this.guardianView.update(guardian, alpha, animSeconds, s.reduceFlashing);
+      if (guardian.phase === 'dying' && animSeconds > 0) {
+        const count = Math.floor((s.reduceMotion ? 40 : 90) * animSeconds + Math.random());
+        this.encounterView.mist(guardian.x, guardian.z, count, 1.4, 3.2);
+      }
+    }
   }
 }

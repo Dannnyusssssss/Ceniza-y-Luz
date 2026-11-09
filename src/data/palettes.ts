@@ -18,6 +18,12 @@ export interface ZonePalette {
   readonly rock: string;
   readonly crystal: string;
   readonly outline: string;
+  /** Color de las grietas o del agua honda. */
+  readonly crack?: string;
+  /** Color de las motas que flotan en el aire. */
+  readonly motes?: string;
+  /** Color de los muros de piedra; sin él, la piedra gris de siempre. */
+  readonly stone?: string;
 }
 
 /** Lumbre: aldea cálida y segura al atardecer. */
@@ -84,4 +90,54 @@ export const BOSQUE_PALETTE: ZonePalette = {
   rock: '#7f8c80',
   crystal: '#c9ff8f',
   outline: '#14201c',
+};
+
+/** Ciénaga de Ecos: ruinas hundidas, neblina verdiazul y agua quieta. */
+export const CIENAGA_PALETTE: ZonePalette = {
+  skyTop: '#10282e',
+  skyHorizon: '#4f8a84',
+  fog: '#4d7f7a',
+  fogDensity: 0.03,
+  sun: '#bfe8d8',
+  sunIntensity: 0.6,
+  hemiSky: '#8fc8c0',
+  hemiGround: '#1c3431',
+  hemiIntensity: 0.6,
+  ground: '#3f6b52',
+  groundFar: '#375f4a',
+  path: '#7f7a5c',
+  wall: '#6f8378',
+  trunk: '#33302a',
+  foliage: ['#2f6b5c', '#3e8068', '#5b7f4a', '#245a5a'],
+  rock: '#5f7270',
+  crystal: '#8affe0',
+  outline: '#0c1c1c',
+  crack: '#143d44',
+  motes: '#b8ffd8',
+  stone: '#67786f',
+};
+
+/** Cueva de Prisma: oscuridad violeta y cristales que dan la luz. */
+export const CUEVA_PALETTE: ZonePalette = {
+  skyTop: '#070512',
+  skyHorizon: '#2a1a52',
+  fog: '#22163f',
+  fogDensity: 0.028,
+  sun: '#b9a8ff',
+  sunIntensity: 0.55,
+  hemiSky: '#a9a4e6',
+  hemiGround: '#1a1030',
+  hemiIntensity: 0.56,
+  ground: '#40355c',
+  groundFar: '#382e52',
+  path: '#5f5484',
+  wall: '#544a78',
+  trunk: '#2a2240',
+  foliage: ['#6a4fd0', '#3f7fe0', '#9a5fe0', '#3fb4d8'],
+  rock: '#4e4670',
+  crystal: '#c49aff',
+  outline: '#0a0618',
+  crack: '#07040f',
+  motes: '#a8c8ff',
+  stone: '#4e4570',
 };

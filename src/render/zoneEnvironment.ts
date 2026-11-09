@@ -16,7 +16,7 @@ import type { ZonePalette } from '../data/palettes';
 import type { ZoneData } from '../data/zones';
 import { groundHeight } from '../world/terrain';
 import type { ScatterItem, ZoneLayout } from '../world/zones';
-import { addZoneStructures } from './zoneStructures';
+import { addZoneStructures, type Veil } from './zoneStructures';
 import { InstancedPoints } from './particles';
 import { MeshBuilder } from './meshBuilder';
 import { applyOutline, type ToonMaterials } from './toon';
@@ -25,6 +25,9 @@ const OUTLINE_WIDTH = 0.035;
 const FLOWER_COLORS = ['#ffd6e8', '#fff2a8', '#c9b8ff'];
 const MUSHROOM_COLORS = { stem: '#e6e0c8', cap: '#7ff0d8' };
 const FIREFLY_COLOR = '#f3ff9a';
+const CRACK_COLOR = '#100c18';
+/** Transparencia de la barrera de Bruma cuando está cerrada. */
+const VEIL_ALPHA = 0.3;
 /** Separación aproximada de los vértices del suelo (m). */
 const GROUND_STEP = 1.7;
 
@@ -52,6 +55,13 @@ function createSky(scene: Scene, palette: ZonePalette): { mesh: Mesh; material: 
   sky.isPickable = false;
   sky.applyFog = false;
   return { mesh: sky, material };
+}
+
+function onCrack(zone: ZoneData, x: number, z: number): boolean {
+  for (const b of zone.blocks) {
+    if (b.kind === 'crack' && Math.abs(x - b.x) <= b.halfX && Math.abs(z - b.z) <= b.halfZ) return true;
+  }
+  return false;
 }
 
 function onPath(zone: ZoneData, x: number, z: number): boolean {
@@ -83,6 +93,7 @@ function createGround(scene: Scene, zone: ZoneData, palette: ZonePalette, materi
   const grass = Color3.FromHexString(palette.ground);
   const far = Color3.FromHexString(palette.groundFar);
   const path = Color3.FromHexString(palette.path);
+  const crack = Color3.FromHexString(palette.crack ?? CRACK_COLOR);
   const colors = new Float32Array((positions.length / 3) * 4);
   for (let i = 0; i < positions.length; i += 9) {
     const cx = ((positions[i] ?? 0) + (positions[i + 3] ?? 0) + (positions[i + 6] ?? 0)) / 3;
@@ -90,7 +101,7 @@ function createGround(scene: Scene, zone: ZoneData, palette: ZonePalette, materi
     // Variación suave entre triángulos para que la hierba no sea un color plano.
     const noise = Math.sin(cx * 12.9898 + cz * 78.233) * 43758.5453;
     const vary = noise - Math.floor(noise);
-    const base = onPath(zone, cx, cz) ? path : vary < 0.45 ? far : grass;
+    const base = onCrack(zone, cx, cz) ? crack : onPath(zone, cx, cz) ? path : vary < 0.45 ? far : grass;
     const k = 0.97 + vary * 0.06;
     const o = (i / 9) * 12;
     for (let v = 0; v < 3; v++) {
@@ -312,13 +323,37 @@ function createMushrooms(
   return mesh;
 }
 
+/** Haces de luz: conos brillantes y fijos que imitan la luz volumétrica por muy poco coste. */
+function createShafts(
+  scene: Scene,
+  zone: ZoneData,
+  palette: ZonePalette,
+): { mesh: Mesh; material: StandardMaterial } | null {
+  if (zone.shafts.length === 0) return null;
+  const builder = new MeshBuilder();
+  for (const p of zone.shafts) {
+    const y = groundHeight(zone, p.x, p.z);
+    builder.cylinder(14, 1.2, 4.2, 7, palette.crystal, { x: p.x, y: y + 7, z: p.z, roll: 0.16 });
+  }
+  const material = new StandardMaterial('shafts', scene);
+  material.disableLighting = true;
+  material.diffuseColor = Color3.Black();
+  material.emissiveColor = Color3.White();
+  material.alpha = 0.07;
+  material.backFaceCulling = false;
+  material.fogEnabled = false;
+  material.disableDepthWrite = true;
+  const mesh = builder.build('shafts', scene, material, false);
+  return mesh ? { mesh, material } : null;
+}
+
 /** Luciérnagas: giran despacio alrededor de su punto y cambian de tamaño sin parpadear. */
 class Fireflies {
   private readonly points: InstancedPoints;
   private readonly items: { x: number; y: number; z: number; phase: number; radius: number }[] = [];
   private time = 0;
 
-  constructor(scene: Scene, zone: ZoneData, materials: ToonMaterials) {
+  constructor(scene: Scene, zone: ZoneData, palette: ZonePalette, materials: ToonMaterials) {
     const rng = createRng(zone.scatter.seed + 5);
     for (let i = 0; i < zone.scatter.fireflies; i++) {
       const x = rng.range(-zone.halfX, zone.halfX);
@@ -332,7 +367,8 @@ class Fireflies {
       });
     }
     const mesh = CreateIcoSphere('firefly', { radius: 0.045, subdivisions: 1 }, scene);
-    this.points = new InstancedPoints(mesh, materials.get(FIREFLY_COLOR, { unlit: true }), this.items.length);
+    const color = palette.motes ?? FIREFLY_COLOR;
+    this.points = new InstancedPoints(mesh, materials.get(color, { unlit: true }), this.items.length);
   }
 
   update(dt: number, reduceMotion: boolean): void {
@@ -364,6 +400,8 @@ export class ZoneEnvironment {
   private readonly meshes: Mesh[] = [];
   private readonly ownedMaterials: StandardMaterial[] = [];
   private readonly fireflies: Fireflies | null;
+  private readonly veil: Veil | null;
+  private readonly shafts: Mesh | null;
 
   constructor(
     scene: Scene,
@@ -380,6 +418,13 @@ export class ZoneEnvironment {
     const structures = addZoneStructures(scene, zone, palette, materials, shadows);
     this.meshes.push(...structures.meshes);
     this.ownedMaterials.push(...structures.materials);
+    this.veil = structures.veil;
+    const shafts = createShafts(scene, zone, palette);
+    this.shafts = shafts?.mesh ?? null;
+    if (shafts) {
+      this.meshes.push(shafts.mesh);
+      this.ownedMaterials.push(shafts.material);
+    }
     this.meshes.push(...createTrees(scene, zone, palette, materials, layout, shadows));
     const rocks = createRocks(scene, zone, palette, materials, layout.rocks);
     if (rocks) this.meshes.push(rocks);
@@ -388,11 +433,21 @@ export class ZoneEnvironment {
     this.meshes.push(...createFlowers(scene, zone, materials, layout.flowers));
     const mushrooms = createMushrooms(scene, zone, materials, layout.mushrooms);
     if (mushrooms) this.meshes.push(mushrooms);
-    this.fireflies = zone.scatter.fireflies > 0 ? new Fireflies(scene, zone, materials) : null;
+    this.fireflies = zone.scatter.fireflies > 0 ? new Fireflies(scene, zone, palette, materials) : null;
   }
 
-  update(dt: number, reduceMotion: boolean): void {
+  update(dt: number, reduceMotion: boolean, veilOpen: boolean, showShafts: boolean): void {
     this.fireflies?.update(dt, reduceMotion);
+    this.shafts?.setEnabled(showShafts);
+    if (this.veil) {
+      const target = veilOpen ? 0 : VEIL_ALPHA;
+      const { material, mesh } = this.veil;
+      if (material.alpha !== target) {
+        material.alpha =
+          target > material.alpha ? target : Math.max(target, material.alpha - (dt * VEIL_ALPHA) / 1.6);
+      }
+      mesh.setEnabled(material.alpha > 0);
+    }
   }
 
   dispose(): void {

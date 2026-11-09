@@ -8,7 +8,8 @@ export interface BlockData {
   readonly halfZ: number;
   readonly height: number;
   /** `bound` es un límite invisible; `tree` y `prop` son árboles y objetos. */
-  readonly kind: 'wall' | 'pillar' | 'ruin' | 'bound' | 'tree' | 'prop';
+  /** `crack`: grieta o agua honda; no se pisa, pero la cruzan el Impulso y lo que vuela. */
+  readonly kind: 'wall' | 'pillar' | 'ruin' | 'bound' | 'tree' | 'prop' | 'crack';
 }
 
 export interface Point2 {
